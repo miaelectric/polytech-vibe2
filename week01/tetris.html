@@ -56,6 +56,55 @@
     .menu .best { color: #ffd500; margin-bottom: 10px; }
     .menu .new-best { color: #3ddc4a; font-weight: bold; display: none; }
     .menu button { width: 180px; }
+
+    /* 터치(핸드폰) 조작 */
+    body { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+    #board { touch-action: none; }
+    button { touch-action: manipulation; }
+    .touch-controls { display: none; }
+
+    @media (max-width: 700px), (pointer: coarse) {
+      body {
+        flex-direction: column;
+        justify-content: flex-start;
+        min-height: 100dvh;
+        padding: 8px 0;
+        box-sizing: border-box;
+      }
+      .game { flex-direction: column; align-items: center; gap: 8px; }
+      .side { order: -1; width: min(100vw - 16px, 420px); }
+      .side h1, .help { display: none; }
+      .stats { display: grid; grid-template-columns: 1fr 1fr 1fr 1.4fr; gap: 6px; }
+      .box { padding: 4px 6px; margin: 0; }
+      .label { font-size: 11px; }
+      .value { font-size: 18px; }
+      #next { width: 60px; height: 40px; }
+      .btns { display: flex; gap: 6px; margin-top: 6px; }
+      .btns button { margin: 0; padding: 6px; font-size: 14px; }
+      /* 화면 높이에 맞춰 게임판 크기 자동 조절 (가로:세로 = 1:2) */
+      #board { height: calc(100dvh - 260px); width: auto; max-width: calc(100vw - 16px); }
+      .menu h2 { font-size: 26px; }
+      .menu button { width: 150px; }
+
+      .touch-controls {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        width: min(100vw - 16px, 420px);
+        margin-top: 8px;
+      }
+      .touch-controls button {
+        margin: 0;
+        height: 64px;
+        font-size: 26px;
+        border: 2px solid #3a3d55;
+        border-radius: 12px;
+        background: #2a2d42;
+        color: #fff;
+      }
+      .touch-controls button:active { background: #4a4f75; }
+      .touch-controls .drop { background: #5a2a42; }
+    }
   </style>
 </head>
 <body>
@@ -79,21 +128,37 @@
 
     <div class="side">
       <h1>테트리스</h1>
-      <div class="box"><div class="label">점수</div><div class="value" id="score">0</div></div>
-      <div class="box"><div class="label">줄</div><div class="value" id="lines">0</div></div>
-      <div class="box"><div class="label">레벨</div><div class="value" id="level">1</div></div>
-      <div class="box"><div class="label">다음 블록</div><canvas id="next" width="120" height="80"></canvas></div>
-      <button id="start">시작</button>
-      <button id="quit">게임 끝내기</button>
-      <button id="sound">🔊 소리 켜짐</button>
+      <div class="stats">
+        <div class="box"><div class="label">점수</div><div class="value" id="score">0</div></div>
+        <div class="box"><div class="label">줄</div><div class="value" id="lines">0</div></div>
+        <div class="box"><div class="label">레벨</div><div class="value" id="level">1</div></div>
+        <div class="box"><div class="label">다음 블록</div><canvas id="next" width="120" height="80"></canvas></div>
+      </div>
+      <div class="btns">
+        <button id="start">시작</button>
+        <button id="pause">⏸ 일시정지</button>
+        <button id="quit">게임 끝내기</button>
+        <button id="sound">🔊 소리 켜짐</button>
+      </div>
       <p class="help">
         ← → : 이동<br>
         ↑ : 회전<br>
         ↓ : 빨리 내리기<br>
         스페이스 : 바로 떨어뜨리기<br>
-        P : 일시정지
+        P : 일시정지<br><br>
+        📱 핸드폰: 게임판을 탭하면 회전,<br>
+        좌우로 끌면 이동, 아래로 쓸면 바로 떨어뜨리기
       </p>
     </div>
+  </div>
+
+  <!-- 핸드폰용 조작 버튼 -->
+  <div class="touch-controls">
+    <button data-act="left" data-repeat>◀</button>
+    <button data-act="rotate">⟳</button>
+    <button data-act="down" data-repeat>▼</button>
+    <button data-act="right" data-repeat>▶</button>
+    <button data-act="hard" class="drop">⤓</button>
   </div>
 
   <script>
@@ -434,6 +499,7 @@
       score = 0; lines = 0; level = 1;
       dropInterval = 800; dropTimer = 0; lastTime = performance.now();
       paused = false; gameOver = false; running = true;
+      document.getElementById('pause').textContent = '⏸ 일시정지';
       clearing = null; particles = []; popups = [];
       document.getElementById('endMenu').classList.remove('show');
       nextPiece = randomPiece();
@@ -487,35 +553,99 @@
       e.target.blur();
     };
 
+    /* ---------- 조작 (키보드, 버튼, 터치가 모두 같은 동작을 씀) ---------- */
+    const actions = {
+      left:   () => { if (!collides(piece.shape, piece.x - 1, piece.y)) { piece.x--; sfx.move(); } },
+      right:  () => { if (!collides(piece.shape, piece.x + 1, piece.y)) { piece.x++; sfx.move(); } },
+      down:   () => { drop(); score += 1; updateStats(); },
+      rotate: () => tryRotate(),
+      hard:   () => hardDrop()
+    };
+
+    function act(name) {
+      if (!running || paused || !piece) return;
+      actions[name]();
+    }
+
+    function togglePause() {
+      if (!running) return;
+      paused = !paused;
+      document.getElementById('pause').textContent = paused ? '▶ 계속하기' : '⏸ 일시정지';
+    }
+    document.getElementById('pause').onclick = e => { togglePause(); e.target.blur(); };
+
+    // 핸드폰 소리: 첫 터치 때 소리 장치를 깨워야 함 (아이폰 등)
+    function unlockAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    document.addEventListener('touchstart', unlockAudio, { passive: true });
+    document.addEventListener('mousedown', unlockAudio);
+
+    // 키보드
+    const keyMap = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', ArrowUp: 'rotate', ' ': 'hard' };
     document.addEventListener('keydown', e => {
       if (!running) {
         if (gameOver && e.key === 'Enter') start();
         return;
       }
-      if (e.key === 'p' || e.key === 'P') { paused = !paused; return; }
-      if (paused || !piece) return;
-      switch (e.key) {
-        case 'ArrowLeft':
-          if (!collides(piece.shape, piece.x - 1, piece.y)) { piece.x--; sfx.move(); }
-          break;
-        case 'ArrowRight':
-          if (!collides(piece.shape, piece.x + 1, piece.y)) { piece.x++; sfx.move(); }
-          break;
-        case 'ArrowDown':
-          drop();
-          score += 1; updateStats();
-          break;
-        case 'ArrowUp':
-          tryRotate();
-          break;
-        case ' ':
-          hardDrop();
-          break;
-        default:
-          return;
-      }
+      if (e.key === 'p' || e.key === 'P') { togglePause(); return; }
+      const name = keyMap[e.key];
+      if (!name) return;
       e.preventDefault();
+      act(name);
     });
+
+    // 화면 버튼 (◀ ▼ ▶ 는 꾹 누르고 있으면 계속 움직임)
+    document.querySelectorAll('.touch-controls button').forEach(btn => {
+      const name = btn.dataset.act;
+      let holdTimer = null;
+      const stop = () => { clearTimeout(holdTimer); clearInterval(holdTimer); holdTimer = null; };
+      btn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        unlockAudio();
+        act(name);
+        if (btn.hasAttribute('data-repeat')) {
+          stop();
+          holdTimer = setTimeout(() => { holdTimer = setInterval(() => act(name), 60); }, 180);
+        }
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+      btn.addEventListener('contextmenu', e => e.preventDefault());
+    });
+
+    // 게임판 터치: 탭 = 회전, 좌우로 끌기 = 이동, 아래로 빠르게 쓸기 = 바로 떨어뜨리기, 천천히 아래로 끌기 = 빨리 내리기
+    const boardEl = document.getElementById('board');
+    let touch = null;
+    boardEl.addEventListener('touchstart', e => {
+      const t = e.changedTouches[0];
+      touch = { x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, time: Date.now(), moved: false };
+      e.preventDefault();
+    }, { passive: false });
+
+    boardEl.addEventListener('touchmove', e => {
+      if (!touch) return;
+      const t = e.changedTouches[0];
+      const cell = boardEl.getBoundingClientRect().width / COLS;
+      while (t.clientX - touch.x > cell) { act('right'); touch.x += cell; touch.moved = true; }
+      while (touch.x - t.clientX > cell) { act('left'); touch.x -= cell; touch.moved = true; }
+      while (t.clientY - touch.y > cell) { act('down'); touch.y += cell; touch.moved = true; }
+      e.preventDefault();
+    }, { passive: false });
+
+    boardEl.addEventListener('touchend', e => {
+      if (!touch) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touch.x0, dy = t.clientY - touch.y0;
+      const dt = Date.now() - touch.time;
+      if (!touch.moved && Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+        act('rotate');                                   // 탭
+      } else if (dy > 60 && dt < 250 && Math.abs(dy) > Math.abs(dx) * 2) {
+        act('hard');                                     // 빠르게 아래로 쓸기
+      }
+      touch = null;
+      e.preventDefault();
+    }, { passive: false });
 
     // 처음 화면
     goHome();
