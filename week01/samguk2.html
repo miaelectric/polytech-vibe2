@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>삼국지 군웅할거</title>
+<meta name="description" content="장수를 등용하고 군대를 움직여 천하를 통일하는 삼국지 전략 시뮬레이션">
+<style>
+  :root {
+    --paper: #f3ead7;
+    --paper2: #e9dcc0;
+    --card: #fbf6ea;
+    --ink: #2b2118;
+    --soft: #6d5d4b;
+    --line: #cdb892;
+    --gold: #a8741a;
+    --red: #b03a2e;
+    --green: #3e7d48;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  .serif { font-family: "Nanum Myeongjo", "AppleMyungjo", "Batang", Georgia, serif; }
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--card);
+    color: var(--ink); border-radius: 10px; padding: 8px 11px;
+  }
+  button:hover:not(:disabled) { border-color: var(--gold); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 700; }
+  button.primary:hover:not(:disabled) { background: #4a3828; }
+  .muted { color: var(--soft); font-size: .88rem; }
+  .badge { font-size: .76rem; color: #fff; padding: 1px 8px; border-radius: 99px; font-weight: 700; white-space: nowrap; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--paper2); border-bottom: 2px solid var(--line);
+  }
+  header h1 { margin: 0; font-size: 1.3rem; }
+  header a { color: var(--soft); font-size: .88rem; }
+  .status { display: flex; gap: 4px 14px; flex-wrap: wrap; font-size: .93rem; align-items: center; }
+  .status b { color: var(--gold); }
+  .tools { display: flex; gap: 6px; }
+  .tools button { padding: 5px 10px; font-size: .85rem; }
+
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px;
+    max-width: 1200px; margin: 0 auto; padding: 16px;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+  .map-wrap {
+    border: 2px solid var(--line); border-radius: 14px; overflow: hidden; align-self: start;
+    background: radial-gradient(ellipse at 40% 40%, #f4e8cc, #e3d0a8);
+  }
+  svg { display: block; width: 100%; height: auto; user-select: none; }
+  .river { fill: none; stroke: #8fb4c8; stroke-width: 7; stroke-linecap: round; opacity: .7; }
+  .river-name { font-size: 13px; fill: #5f8aa3; font-style: italic; }
+  .road { stroke: #a08a62; stroke-width: 2; stroke-dasharray: 5 5; }
+  .city { cursor: pointer; }
+  .city .dot { stroke: #fff8e8; stroke-width: 3; }
+  .city .dot.sel { stroke: #f2b632; stroke-width: 5; }
+  .city .cname { font-size: 12px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
+  .city .troops {
+    font-size: 11px; font-weight: 700; fill: var(--ink); text-anchor: middle; pointer-events: none;
+    paint-order: stroke; stroke: #f4e8cc; stroke-width: 3.5px;
+  }
+  .city .todo { fill: #f2b632; stroke: #fff; stroke-width: 1.5; }
+  .city .todo-n { font-size: 10px; font-weight: 800; fill: var(--ink); text-anchor: middle; pointer-events: none; }
+
+  .panel { display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .card h2 { margin: 0 0 8px; font-size: 1.12rem; display: flex; align-items: center; gap: 8px; }
+  .card h3 { margin: 12px 0 6px; font-size: .95rem; color: var(--soft); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; font-size: .92rem; }
+  .stats div { display: flex; justify-content: space-between; border-bottom: 1px dashed #e2d4b6; padding: 2px 0; }
+  .cmds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+  .cmds button { padding: 7px 4px; font-size: .9rem; }
+  .cmds button small { display: block; font-size: .72rem; color: var(--soft); }
+  .cmds .wide { grid-column: span 3; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  td, th { padding: 3px 4px; text-align: right; white-space: nowrap; }
+  td:first-child, th:first-child { text-align: left; }
+  th { color: var(--soft); font-weight: 500; }
+  tr.done td { opacity: .45; }
+  .hl { background: #f6e3c4; font-weight: 700; }
+  .pick-row { cursor: pointer; }
+  .pick-row:hover td { background: #f1dfbd; }
+  .end-turn { width: 100%; padding: 12px; font-size: 1.05rem; }
+
+  .log { max-height: 240px; overflow-y: auto; font-size: .84rem; padding-right: 4px; }
+  .log p { margin: 0 0 5px; }
+  .log .me { color: var(--green); font-weight: 600; }
+  .log .bad { color: var(--red); font-weight: 600; }
+  .log .turn { color: var(--gold); font-weight: 700; margin-top: 8px; }
+
+  /* ---------- 팝업 ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(30, 22, 14, .55); display: flex;
+    align-items: center; justify-content: center; padding: 16px; z-index: 20;
+  }
+  .modal {
+    background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 20px;
+    max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  }
+  .modal h2 { margin: 0 0 10px; font-size: 1.4rem; }
+  .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .opt-list { display: grid; gap: 8px; }
+  .opt-list button { text-align: left; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .gchecks { display: grid; gap: 4px; margin: 8px 0; }
+  .gchecks label { padding: 6px 8px; border: 1px solid #e2d4b6; border-radius: 8px; cursor: pointer; }
+  .slider { display: block; margin-top: 10px; }
+  .slider input { width: 100%; }
+  .seal {
+    width: 44px; height: 44px; flex: none; border-radius: 10px; color: #fff; display: grid; place-items: center;
+    font-size: 1.05rem; font-weight: 900;
+  }
+  .factions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  @media (max-width: 520px) { .factions { grid-template-columns: 1fr; } }
+  .factions button { display: flex; gap: 10px; align-items: center; text-align: left; padding: 8px 10px; }
+  details { margin-top: 12px; font-size: .9rem; }
+  details summary { cursor: pointer; color: var(--soft); }
+  details ul { padding-left: 18px; margin: 8px 0 0; }
+  .duel p { margin: 4px 0; }
+
+  /* ---------- 전투 화면 ---------- */
+  .battle { position: fixed; inset: 0; z-index: 10; background: var(--paper); overflow-y: auto; }
+  .battle[hidden] { display: none; }
+  .b-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 16px; background: #3a2b1d; color: #f3ead7;
+  }
+  .b-head h2 { margin: 0; font-size: 1.15rem; }
+  .b-main { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 14px; padding: 14px; max-width: 1120px; margin: 0 auto; }
+  @media (max-width: 860px) { .b-main { grid-template-columns: 1fr; } }
+  .b-field { border: 2px solid #5b4630; border-radius: 10px; overflow: hidden; align-self: start; }
+  .tile { stroke: rgba(0,0,0,.08); }
+  .reach { fill: rgba(60, 120, 220, .35); pointer-events: none; }
+  .tgt { fill: rgba(200, 40, 30, .35); pointer-events: none; }
+  .unit-name { font-size: 11px; font-weight: 800; fill: #fff; text-anchor: middle; pointer-events: none; }
+  .unit-troops { font-size: 9.5px; font-weight: 700; fill: #241a10; text-anchor: middle; pointer-events: none;
+    paint-order: stroke; stroke: #fff6e0; stroke-width: 3px; }
+  .unit.done { opacity: .5; }
+  .unit .ring { fill: none; stroke: #f2b632; stroke-width: 4; }
+  .unit.hit circle.body { animation: hit .45s ease-in-out 2; }
+  @keyframes hit { 50% { opacity: .2; } }
+  .b-side { display: flex; flex-direction: column; gap: 10px; }
+  .b-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .b-actions small { display: block; font-size: .72rem; color: var(--soft); }
+  .hint { padding: 8px 10px; border-radius: 10px; background: #f6e3c4; font-size: .88rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 class="serif">🏯 삼국지 군웅할거</h1>
+    <a href="index.html">← 서재로</a> · <a href="samguk.html">간단판</a>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="tools">
+    <button id="btn-save">💾 저장</button>
+    <button id="btn-new">처음으로</button>
+  </div>
+</header>
+
+<main>
+  <div class="map-wrap"><svg id="map" viewBox="0 0 700 540" aria-label="중원 지도"></svg></div>
+  <div class="panel">
+    <div class="card" id="city-card"></div>
+    <button class="primary end-turn" id="end-turn">이번 달 마치기 ▶</button>
+    <div class="card"><h2 class="serif">천하 형세</h2><table id="powers"></table></div>
+    <div class="card"><h2 class="serif">전황 기록</h2><div class="log" id="log"></div></div>
+  </div>
+</main>
+
+<div class="battle" id="battle" hidden>
+  <div class="b-head"><h2 class="serif" id="b-title"></h2><b id="b-day"></b></div>
+  <div class="b-main">
+    <div class="b-field"><svg id="b-svg" viewBox="0 0 624 432"></svg></div>
+    <div class="b-side">
+      <div class="card" id="b-unit"></div>
+      <div class="b-actions" id="b-actions"></div>
+      <button class="primary end-turn" id="b-end">턴 종료 ▶</button>
+      <button id="b-retreat">🏳️ 퇴각</button>
+      <div class="card"><div class="log" id="b-log"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="overlay"></div>
+
+<script>
+// ============================================================
+//  1. 데이터 — 숫자를 바꿔서 게임을 내 맘대로 바꿔 보세요 ✏️
+// ============================================================
+const FACTIONS = {
+  cao:      { ruler: '조조',   color: '#3b5ba5', level: '쉬움' },
+  yuan:     { ruler: '원소',   color: '#b08a18', level: '쉬움' },
+  sun:      { ruler: '손책',   color: '#c0392b', level: '보통' },
+  liubiao:  { ruler: '유표',   color: '#16897a', level: '보통' },
+  liu:      { ruler: '유비',   color: '#3e8a4c', level: '보통' },
+  ma:       { ruler: '마등',   color: '#d35400', level: '보통' },
+  liuzhang: { ruler: '유장',   color: '#6d8a3a', level: '보통' },
+  gongsun:  { ruler: '공손찬', color: '#5f7d95', level: '어려움' },
+  yuanshu:  { ruler: '원술',   color: '#8e44ad', level: '어려움' },
+  zhangxiu: { ruler: '장수',   color: '#8e6e53', level: '어려움' },
+  zhanglu:  { ruler: '장로',   color: '#b0607a', level: '어려움' },
+  lijue:    { ruler: '이각',   color: '#4a4a4a', level: '매우 어려움' },
+};
+
+// [이름, x, y, 주인, 병력, 농업, 상업, 성벽, 인구(만)]
+const CITY_DATA = [
+  ['북평', 560, 45,  'gongsun',  9000,  350, 300, 60, 18],
+  ['남피', 480, 85,  'yuan',     9000,  450, 350, 55, 25],
+  ['업',   405, 118, 'yuan',     14000, 600, 500, 80, 40],
+  ['진류', 425, 182, 'cao',      7000,  450, 400, 50, 25],
+  ['허창', 395, 240, 'cao',      12000, 550, 550, 75, 35],
+  ['낙양', 300, 195, 'cao',      8000,  500, 500, 85, 30],
+  ['소패', 500, 215, 'liu',      6000,  350, 300, 40, 15],
+  ['하비', 575, 240, 'liu',      8000,  450, 400, 70, 25],
+  ['수춘', 480, 295, 'yuanshu',  11000, 500, 450, 65, 30],
+  ['여강', 470, 372, 'yuanshu',  5000,  350, 300, 45, 15],
+  ['건업', 590, 330, 'sun',      10000, 500, 500, 70, 30],
+  ['회계', 625, 435, 'sun',      7000,  400, 350, 50, 20],
+  ['완',   300, 275, 'zhangxiu', 8000,  400, 350, 55, 20],
+  ['양양', 300, 345, 'liubiao',  11000, 550, 500, 85, 35],
+  ['강릉', 262, 425, 'liubiao',  8000,  500, 400, 60, 25],
+  ['강하', 385, 392, 'liubiao',  6000,  350, 350, 55, 15],
+  ['장사', 300, 500, 'liubiao',  6000,  400, 300, 50, 20],
+  ['장안', 185, 195, 'lijue',    10000, 450, 400, 80, 30],
+  ['서량', 70,  110, 'ma',       10000, 300, 250, 55, 15],
+  ['한중', 150, 285, 'zhanglu',  8000,  450, 300, 75, 20],
+  ['성도', 75,  400, 'liuzhang', 12000, 650, 450, 75, 40],
+  ['강주', 190, 410, 'liuzhang', 7000,  400, 300, 55, 15],
+];
+
+const ROADS = [
+  ['서량', '장안'], ['장안', '낙양'], ['장안', '한중'], ['한중', '성도'], ['성도', '강주'], ['강주', '강릉'],
+  ['낙양', '완'], ['낙양', '허창'], ['낙양', '진류'], ['진류', '업'], ['업', '남피'], ['남피', '북평'],
+  ['진류', '허창'], ['진류', '소패'], ['허창', '완'], ['허창', '소패'], ['허창', '수춘'], ['소패', '하비'],
+  ['하비', '수춘'], ['하비', '건업'], ['수춘', '건업'], ['수춘', '여강'], ['여강', '건업'], ['여강', '강하'],
+  ['건업', '회계'], ['강하', '양양'], ['강하', '장사'], ['양양', '완'], ['양양', '강릉'], ['강릉', '장사'],
+];
+
+// [이름, 세력(null = 재야), 있는 도시, 통솔, 무력, 지력, 정치, 군주?]
+const GEN_DATA = [
+  ['조조', 'cao', '허창', 96, 72, 91, 94, 1], ['하후돈', 'cao', '허창', 90, 90, 58, 70], ['허저', 'cao', '허창', 65, 96, 36, 20],
+  ['전위', 'cao', '허창', 70, 97, 35, 24], ['순욱', 'cao', '허창', 52, 14, 95, 97], ['이전', 'cao', '허창', 77, 73, 77, 61],
+  ['곽가', 'cao', '진류', 62, 15, 98, 84], ['하후연', 'cao', '진류', 90, 91, 55, 44], ['악진', 'cao', '진류', 75, 84, 49, 40],
+  ['조인', 'cao', '낙양', 89, 86, 62, 51], ['우금', 'cao', '낙양', 80, 74, 70, 45], ['순유', 'cao', '낙양', 59, 20, 94, 85],
+
+  ['원소', 'yuan', '업', 81, 69, 73, 76, 1], ['안량', 'yuan', '업', 82, 93, 42, 32], ['문추', 'yuan', '업', 79, 94, 25, 30],
+  ['전풍', 'yuan', '업', 49, 28, 93, 86], ['심배', 'yuan', '업', 70, 45, 80, 77], ['저수', 'yuan', '남피', 83, 40, 92, 82],
+  ['장합', 'yuan', '남피', 89, 90, 69, 57], ['고람', 'yuan', '남피', 80, 80, 50, 45],
+
+  ['공손찬', 'gongsun', '북평', 80, 85, 51, 50, 1], ['조운', 'gongsun', '북평', 91, 96, 76, 65],
+  ['전예', 'gongsun', '북평', 80, 72, 80, 72], ['엄강', 'gongsun', '북평', 60, 65, 40, 35],
+
+  ['유비', 'liu', '하비', 75, 73, 74, 78, 1], ['관우', 'liu', '하비', 95, 97, 75, 62], ['손건', 'liu', '하비', 30, 30, 70, 80],
+  ['간옹', 'liu', '하비', 30, 30, 60, 74], ['장비', 'liu', '소패', 85, 98, 30, 22], ['미축', 'liu', '소패', 25, 25, 65, 80],
+
+  ['원술', 'yuanshu', '수춘', 63, 65, 59, 40, 1], ['기령', 'yuanshu', '수춘', 72, 82, 40, 35], ['양홍', 'yuanshu', '수춘', 40, 20, 75, 70],
+  ['장훈', 'yuanshu', '여강', 60, 60, 55, 50], ['유훈', 'yuanshu', '여강', 55, 50, 40, 45],
+
+  ['손책', 'sun', '건업', 92, 94, 69, 70, 1], ['주유', 'sun', '건업', 97, 71, 96, 86], ['장소', 'sun', '건업', 18, 12, 80, 99],
+  ['태사자', 'sun', '건업', 82, 93, 66, 58], ['주태', 'sun', '건업', 76, 90, 45, 30], ['정보', 'sun', '회계', 83, 74, 74, 67],
+  ['황개', 'sun', '회계', 82, 83, 66, 51], ['한당', 'sun', '회계', 77, 80, 46, 45],
+
+  ['유표', 'liubiao', '양양', 61, 52, 70, 77, 1], ['괴월', 'liubiao', '양양', 42, 30, 85, 80], ['문빙', 'liubiao', '양양', 79, 82, 63, 58],
+  ['채모', 'liubiao', '강릉', 75, 68, 70, 60], ['황조', 'liubiao', '강하', 70, 68, 50, 40], ['한현', 'liubiao', '장사', 50, 45, 40, 50],
+  ['황충', 'liubiao', '장사', 86, 95, 60, 52],
+
+  ['장수', 'zhangxiu', '완', 75, 83, 62, 45, 1], ['가후', 'zhangxiu', '완', 86, 48, 97, 85], ['호거아', 'zhangxiu', '완', 60, 85, 20, 15],
+  ['이각', 'lijue', '장안', 67, 77, 36, 15, 1], ['곽사', 'lijue', '장안', 65, 73, 30, 15], ['번조', 'lijue', '장안', 60, 70, 25, 20],
+  ['마등', 'ma', '서량', 80, 85, 47, 52, 1], ['마초', 'ma', '서량', 88, 97, 44, 26], ['방덕', 'ma', '서량', 80, 94, 70, 40], ['한수', 'ma', '서량', 72, 72, 74, 64],
+  ['장로', 'zhanglu', '한중', 52, 40, 70, 75, 1], ['장위', 'zhanglu', '한중', 60, 70, 30, 30], ['염포', 'zhanglu', '한중', 30, 20, 80, 70], ['양백', 'zhanglu', '한중', 55, 60, 40, 35],
+  ['유장', 'liuzhang', '성도', 45, 40, 50, 60, 1], ['황권', 'liuzhang', '성도', 70, 40, 85, 80], ['장송', 'liuzhang', '성도', 20, 20, 85, 80],
+  ['법정', 'liuzhang', '성도', 80, 50, 94, 82], ['장임', 'liuzhang', '강주', 85, 84, 80, 58], ['엄안', 'liuzhang', '강주', 80, 83, 65, 55],
+
+  // 재야 장수 — '탐색'으로 찾아서 '등용'하세요
+  ['제갈량', null, '양양', 92, 38, 100, 95], ['방통', null, '강릉', 85, 34, 97, 85], ['서서', null, '허창', 76, 65, 93, 81],
+  ['사마의', null, '낙양', 98, 63, 96, 93], ['육손', null, '회계', 95, 69, 95, 87], ['노숙', null, '수춘', 80, 56, 92, 90],
+  ['감녕', null, '강하', 87, 94, 76, 18], ['위연', null, '장사', 85, 93, 62, 40], ['서황', null, '장안', 88, 90, 70, 49],
+  ['장료', null, '소패', 93, 92, 79, 58], ['진궁', null, '하비', 82, 54, 90, 78], ['여몽', null, '건업', 92, 81, 89, 79],
+  ['정욱', null, '진류', 70, 45, 90, 80], ['마대', null, '서량', 75, 80, 50, 40], ['허유', null, '업', 50, 30, 85, 60],
+];
+
+// 명령: 장수 한 명이 한 달에 하나씩 할 수 있어요
+const CMD = {
+  farm:   { label: '개간', icon: '🌾', stat: 'pol',  cost: 50,  desc: '농업↑ 7월 수확' },
+  comm:   { label: '상업', icon: '🏪', stat: 'pol',  cost: 50,  desc: '상업↑ 매달 금' },
+  wall:   { label: '성벽', icon: '🧱', stat: 'lead', cost: 50,  desc: '성벽↑ 수비 유리' },
+  draft:  { label: '징병', icon: '🪖', stat: 'lead', cost: 100, desc: '병력 +1,000' },
+  train:  { label: '훈련', icon: '🎯', stat: 'lead', cost: 0,   desc: '훈련도↑' },
+  search: { label: '탐색', icon: '🔍', stat: 'int',  cost: 0,   desc: '재야 인재 찾기' },
+};
+const STATS = ['lead', 'war', 'int', 'pol'];
+const STAT_NAME = { lead: '통솔', war: '무력', int: '지력', pol: '정치' };
+const SAVE_KEY = 'samguk2-save';
+
+// ============================================================
+//  2. 게임 상태와 도우미 함수
+// ============================================================
+let state = null;
+let busy = false;
+
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const rnd = n => Math.floor(Math.random() * n);
+const pick = arr => arr[rnd(arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = n => Math.round(n).toLocaleString('ko-KR');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const city = n => state.cities.find(c => c.name === n);
+const adj = n => ROADS.filter(r => r.includes(n)).map(r => city(r[0] === n ? r[1] : r[0]));
+const citiesOf = f => state.cities.filter(c => c.owner === f);
+const alive = f => state.cities.some(c => c.owner === f);
+const gen = id => state.gens[id];
+const gensOf = f => state.gens.filter(g => g.f === f && !g.dead);
+const gensIn = (n, f) => state.gens.filter(g => g.city === n && g.f === f && !g.dead);
+const freeIn = n => state.gens.filter(g => g.city === n && !g.f && !g.dead);
+const power = g => g.lead * 0.6 + g.war * 0.4;
+const byPower = (a, b) => power(b) - power(a);
+const fname = f => f ? FACTIONS[f].ruler : '재야';
+const tag = f => `<span class="badge" style="background:${f ? FACTIONS[f].color : '#8b8378'}">${fname(f)}</span>`;
+const sumTroops = list => list.reduce((s, u) => s + u.troops, 0);
+
+// 한국어 조사: josa('관우', '이', '가') → '관우가'
+function josa(word, a, b) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return word + (code >= 0 && code % 28 !== 0 ? a : b);
+}
+function ro(word) {   // ~으로 / ~로
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return word + (code >= 0 && code % 28 !== 0 && code % 28 !== 8 ? '으로' : '로');
+}
+
+function newGame(player) {
+  state = {
+    player, year: 200, month: 1, over: false, dead: [],
+    cities: CITY_DATA.map(([name, x, y, owner, troops, farm, comm, wall, pop]) =>
+      ({ name, x, y, owner, troops, farm, comm, wall, pop: pop * 10000, train: 50 })),
+    gens: GEN_DATA.map(([name, f, c, lead, war, int, pol, ruler], id) => ({
+      id, name, f, city: c, lead, war, int, pol, ruler: !!ruler,
+      loyalty: ruler ? 100 : f ? 70 + rnd(25) : 0, acted: false, found: false, dead: false,
+    })),
+    gold: {}, food: {},
+  };
+  for (const f in FACTIONS) {
+    const n = citiesOf(f).length;
+    state.gold[f] = 800 + n * 300;
+    state.food[f] = 8000 + n * 4000;
+  }
+  state.selected = gensOf(player).find(g => g.ruler).city;
+  $('log').innerHTML = '';
+  log(`${dateText()} — ${FACTIONS[player].ruler}의 천하 쟁패가 시작된다!`, 'turn');
+  log('도시를 누르고 장수에게 명령을 내리세요. 장수마다 한 달에 한 번 움직일 수 있어요.');
+  closeModal();
+  render();
+}
+
+const dateText = () => `${state.year}년 ${state.month}월`;
+
+// ============================================================
+//  3. 명령 (플레이어와 컴퓨터가 함께 써요)
+// ============================================================
+function runCmd(g, type, c) {
+  const f = g.f, k = rand(0.8, 1.2);
+  state.gold[f] -= CMD[type].cost;
+  g.acted = true;
+  switch (type) {
+    case 'farm': {
+      const v = Math.round((8 + g.pol / 4) * k);
+      c.farm = Math.min(999, c.farm + v);
+      return `🌾 ${josa(g.name, '이', '가')} 땅을 일궈 ${c.name} 농업 +${v}`;
+    }
+    case 'comm': {
+      const v = Math.round((8 + g.pol / 4) * k);
+      c.comm = Math.min(999, c.comm + v);
+      return `🏪 ${josa(g.name, '이', '가')} 시장을 넓혀 ${c.name} 상업 +${v}`;
+    }
+    case 'wall': {
+      const v = Math.round((2 + g.lead / 20) * k);
+      c.wall = Math.min(100, c.wall + v);
+      return `🧱 ${josa(g.name, '이', '가')} 성벽을 보수했다. 성벽 +${v}`;
+    }
+    case 'draft': {
+      const old = c.troops;
+      c.troops += 1000;
+      c.pop -= 1000;
+      c.train = Math.round((c.train * old + 30 * 1000) / (old + 1000));
+      return `🪖 ${josa(g.name, '이', '가')} ${c.name}에서 병사 1,000명을 모았다.`;
+    }
+    case 'train': {
+      const v = Math.round((3 + g.lead / 12) * k);
+      c.train = Math.min(100, c.train + v);
+      return `🎯 ${josa(g.name, '이', '가')} 군사를 조련했다. 훈련도 ${c.train}`;
+    }
+    case 'search': {
+      const hidden = freeIn(c.name).filter(x => !x.found);
+      if (hidden.length && Math.random() < g.int / 120) {
+        hidden[0].found = true;
+        return `🔍 ${josa(g.name, '이', '가')} 재야의 인재 ${josa(hidden[0].name, '을', '를')} 찾아냈다! 등용해 보세요.`;
+      }
+      if (Math.random() < 0.35) {
+        const v = 50 + rnd(100);
+        state.gold[f] += v;
+        return `🔍 ${josa(g.name, '이', '가')} 숨겨진 금 ${v}을 발견했다.`;
+      }
+      return `🔍 ${josa(g.name, '이', '가')} 수소문했지만 아무것도 찾지 못했다.`;
+    }
+  }
+}
+
+function canRun(type, c, f) {
+  if (state.gold[f] < CMD[type].cost) return false;
+  if (type === 'farm') return c.farm < 999;
+  if (type === 'comm') return c.comm < 999;
+  if (type === 'wall') return c.wall < 100;
+  if (type === 'draft') return c.pop >= 10000 && c.troops < 40000;
+  if (type === 'train') return c.train < 100;
+  return true;
+}
+
+function recruitChance(exec, t) {
+  if (t.ruler) return 0;
+  if (!t.f) return clamp(0.35 + (exec.int + exec.pol) / 500 - t.int / 400, 0.15, 0.9);  // 재야
+  return clamp((100 - t.loyalty) / 100 * 0.7 + exec.int / 500 - 0.1, 0.02, 0.6);          // 다른 세력
+}
+const prisonerChance = g => clamp(0.25 + (100 - g.loyalty) / 110, 0.1, 0.85);
+
+function tryRecruit(exec, t) {
+  exec.acted = true;
+  if (Math.random() < recruitChance(exec, t)) {
+    const from = t.f;
+    t.f = exec.f; t.city = exec.city; t.loyalty = 60 + rnd(20); t.found = true; t.acted = true;
+    return { ok: true, msg: `🤝 ${exec.name}의 설득에 ${josa(t.name, '이', '가')} ${from ? josa(fname(from), '을', '를') + ' 떠나 ' : ''}${fname(exec.f)}군에 합류했다!` };
+  }
+  return { ok: false, msg: `🙅 ${josa(t.name, '이', '가')} ${exec.name}의 등용 제의를 거절했다.` };
+}
+
+function joinFaction(g, f, cityName) {
+  g.f = f; g.city = cityName; g.loyalty = 55 + rnd(20); g.acted = true; g.found = true;
+}
+
+// 풀어준 장수는 자기 세력으로 돌아가거나, 세력이 없으면 재야가 돼요
+function release(g, cityName) {
+  if (g.f && alive(g.f)) { g.city = pick(citiesOf(g.f)).name; return; }
+  g.f = null; g.found = true; g.city = cityName; g.loyalty = 0;
+}
+
+function homeCity(f, preferred) {
+  if (preferred && city(preferred).owner === f) return preferred;
+  const own = citiesOf(f);
+  return own.length ? pick(own).name : null;
+}
+
+// ============================================================
+//  4. 출진과 전투 결과
+// ============================================================
+function splitTroops(gens, total) {
+  const cap = gens.reduce((s, g) => s + g.lead * 100, 0);
+  const units = gens.map(g => ({ genId: g.id, troops: Math.floor(total * g.lead * 100 / cap / 100) * 100 }));
+  units[0].troops += total - sumTroops(units);
+  return units;
+}
+
+function armyPower(gens, troops, train) {
+  if (!gens.length) return troops * 0.2;
+  const avg = gens.reduce((s, g) => s + power(g), 0) / gens.length;
+  return troops * avg / 70 * (0.6 + train / 250);
+}
+function defPower(c) {
+  const gs = gensIn(c.name, c.owner).sort(byPower).slice(0, 5);
+  return armyPower(gs, c.troops, c.train) * (1.1 + c.wall / 200) + 500;
+}
+
+async function launchAttack(f, from, to, ids, troops, auto) {
+  const P = state.player;
+  const att = ids.map(gen);
+  att.forEach(g => { g.acted = true; });
+  troops = Math.min(troops, att.reduce((s, g) => s + g.lead * 100, 0), from.troops);
+  from.troops -= troops;
+  const D = to.owner;
+  log(`⚔️ ${fname(f)}군 ${att.map(g => g.name).join('·')} (${fmt(troops)}명) → ${fname(D)}의 ${to.name}`,
+    D === P ? 'bad' : f === P ? 'me' : '');
+
+  const defGens = gensIn(to.name, D).sort(byPower).slice(0, 5);
+  if (!defGens.length) {   // 지키는 장수가 없으면 그냥 들어가요
+    to.owner = f;
+    to.troops = Math.round(to.troops * 0.5) + troops;
+    att.forEach(g => { g.city = to.name; });
+    log(`🚩 장수가 없는 ${to.name}에 ${fname(f)}군이 무혈입성했다!`, D === P ? 'bad' : f === P ? 'me' : '');
+    checkEliminations();
+    return;
+  }
+
+  const defTroops = Math.min(to.troops, defGens.reduce((s, g) => s + g.lead * 100, 0));
+  const setup = {
+    f, D, from: from.name, to: to.name,
+    att: splitTroops(att, troops), def: splitTroops(defGens, Math.max(100, defTroops)),
+    reserve: to.troops - defTroops, attTrain: from.train, defTrain: to.train, wall: to.wall,
+  };
+  to.troops = 0;
+
+  let manual = (f === P || D === P) && !auto;
+  if (D === P) {
+    const v = await ask(`
+      <h2 class="serif">📯 ${fname(f)}군 침공!</h2>
+      <p>${att.map(g => `<b>${g.name}</b>`).join(', ')}이(가) 이끄는 ${fmt(troops)}명이 ${ro(to.name)} 쳐들어왔어요.</p>
+      <p class="muted">우리 수비: ${defGens.map(g => g.name).join(', ')} · 병력 ${fmt(defTroops + setup.reserve)}</p>
+      <div class="btns"><button data-v="auto">자동 전투</button><button class="primary" data-v="manual">직접 지휘</button></div>`);
+    manual = v === 'manual';
+  }
+  const result = manual ? await tacticalBattle(setup) : autoBattle(setup);
+  await applyBattle(setup, result);
+}
+
+async function applyBattle(s, r) {
+  const P = state.player, A = s.f, D = s.D;
+  const from = city(s.from), to = city(s.to);
+  const prisoners = r.captured.map(c => ({ g: gen(c.genId), by: c.by === 'att' ? A : D }));
+  const capturedIds = new Set(r.captured.map(c => c.genId));
+  let headline;
+
+  if (r.winner === 'att') {
+    to.owner = A;
+    to.troops = sumTroops(r.att);
+    to.train = s.attTrain;
+    s.att.forEach(u => { if (!capturedIds.has(u.genId)) gen(u.genId).city = to.name; });
+    const exits = adj(to.name).filter(n => n.owner === D);
+    for (const g of gensIn(to.name, D)) {
+      if (capturedIds.has(g.id)) continue;
+      if (exits.length) g.city = pick(exits).name;
+      else prisoners.push({ g, by: A });
+    }
+    s.att.forEach(u => { const g = gen(u.genId); if (!g.ruler) g.loyalty = Math.min(100, g.loyalty + 3); });
+    headline = `🚩 ${fname(A)}군이 ${josa(to.name, '을', '를')} 점령했다!`;
+  } else {
+    to.troops = s.reserve + sumTroops(r.def);
+    from.troops += sumTroops(r.att);
+    headline = `🛡️ ${fname(D)}군이 ${josa(to.name, '을', '를')} 지켜냈다!`;
+  }
+  log(headline, (A === P) === (r.winner === 'att') && (A === P || D === P) ? 'me' : (A === P || D === P) ? 'bad' : '');
+
+  if (A === P || D === P) {
+    const won = (A === P) === (r.winner === 'att');
+    await ask(`
+      <h2 class="serif">${won ? '🎉 승리!' : '😢 패배…'}</h2>
+      <p>${headline}</p>${r.reason ? `<p class="muted">${r.reason}</p>` : ''}
+      <p class="muted">남은 병력 — 공격군 ${fmt(sumTroops(r.att))} · 수비군 ${fmt(sumTroops(r.def))}
+      ${prisoners.length ? `<br>포로: ${prisoners.map(p => p.g.name).join(', ')}` : ''}</p>
+      <div class="btns"><button class="primary" data-v="ok">확인</button></div>`);
+  }
+
+  for (const { g, by } of prisoners) {
+    if (g.dead) continue;
+    if (g.ruler) {
+      if (alive(g.f)) { g.city = homeCity(g.f); log(`👑 ${josa(g.name, '은', '는')} 간신히 탈출했다.`); }
+      else { g.dead = true; log(`👑 ${josa(g.name, '이', '가')} 최후를 맞았다.`, g.f === P ? 'bad' : 'turn'); }
+      continue;
+    }
+    const where = homeCity(by, by === A ? (r.winner === 'att' ? to.name : from.name) : to.name);
+    if (!where) { release(g, to.name); continue; }
+    if (by === P) await playerPrisoner(g, where);
+    else aiPrisoner(by, g, where);
+  }
+  checkEliminations();
+  render();
+}
+
+async function playerPrisoner(g, where) {
+  const p = prisonerChance(g);
+  let v = await ask(`
+    <h2 class="serif">⛓️ 포로 — ${g.name}</h2>
+    <p>${tag(g.f)} 통솔 ${g.lead} · 무력 ${g.war} · 지력 ${g.int} · 정치 ${g.pol}</p>
+    <p class="muted">등용 성공률 약 ${Math.round(p * 100)}%</p>
+    <div class="btns"><button data-v="kill">처형</button><button data-v="free">해방</button><button class="primary" data-v="hire">등용</button></div>`);
+  if (v === 'hire') {
+    if (Math.random() < p) {
+      joinFaction(g, state.player, where);
+      log(`🤝 ${josa(g.name, '이', '가')} 우리 편이 되었다!`, 'me');
+      await ask(`<h2 class="serif">🤝 등용 성공</h2><p>${josa(g.name, '이', '가')} 고개를 숙였습니다. ${where}에 배치했어요.</p><div class="btns"><button class="primary" data-v="ok">확인</button></div>`);
+      return;
+    }
+    v = await ask(`
+      <h2 class="serif">🙅 거절</h2><p>"두 주인을 섬길 수는 없소!" ${josa(g.name, '이', '가')} 등용을 거절했습니다.</p>
+      <div class="btns"><button data-v="kill">처형</button><button class="primary" data-v="free">해방</button></div>`);
+  }
+  if (v === 'kill') { g.dead = true; log(`⚰️ ${josa(g.name, '을', '를')} 처형했다.`, 'bad'); }
+  else { release(g, where); log(`🕊️ ${josa(g.name, '을', '를')} 풀어주었다.`); }
+}
+
+function aiPrisoner(F, g, where) {
+  const P = state.player, mine = g.f === P;
+  if (Math.random() < prisonerChance(g)) {
+    joinFaction(g, F, where);
+    log(`🤝 포로 ${josa(g.name, '이', '가')} ${fname(F)}군에 등용되었다.`, mine ? 'bad' : '');
+  } else if (Math.random() < 0.15) {
+    g.dead = true;
+    log(`⚰️ ${fname(F)}군이 포로 ${josa(g.name, '을', '를')} 처형했다.`, mine ? 'bad' : '');
+  } else {
+    release(g, where);
+    if (mine) log(`🕊️ ${josa(g.name, '이', '가')} 풀려나 돌아왔다.`, 'me');
+  }
+}
+
+function checkEliminations() {
+  for (const f in FACTIONS) {
+    if (alive(f) || state.dead.includes(f)) continue;
+    state.dead.push(f);
+    gensOf(f).forEach(g => {
+      if (g.ruler) g.dead = true;
+      else { g.f = null; g.found = true; g.loyalty = 0; }
+    });
+    log(`💀 ${fname(f)} 세력이 멸망했다!`, f === state.player ? 'bad' : 'turn');
+  }
+}
+
+// ============================================================
+//  5. 전투 계산 (자동 전투와 직접 지휘가 함께 써요)
+// ============================================================
+const TERRAIN = {
+  plain:    { name: '평지', cost: 1,  def: 1,    color: '#d9cd97' },
+  forest:   { name: '숲',   cost: 2,  def: 0.8,  color: '#93b075', icon: '🌲' },
+  mountain: { name: '산',   cost: 3,  def: 0.7,  color: '#ad9a7e', icon: '⛰️' },
+  river:    { name: '강',   cost: 99, def: 1,    color: '#86b6d0' },
+  bridge:   { name: '다리', cost: 1,  def: 1.1,  color: '#b9925f' },
+  castle:   { name: '성',   cost: 1,  def: 0.75, color: '#9a7b55', icon: '🏯' },
+};
+
+// a 부대가 d 부대를 공격했을 때의 피해
+function calcDmg(a, d, mult) {
+  const ga = gen(a.genId), gd = gen(d.genId);
+  const atkP = ga.lead * 0.6 + ga.war * 0.4;
+  const defP = gd.lead * 0.7 + gd.war * 0.3;
+  const tr = (0.6 + a.train / 250) / (0.6 + d.train / 250);
+  const v = (a.troops * 0.1 * (atkP / defP) * tr * mult + 60) * rand(0.9, 1.1);
+  return Math.max(0, Math.min(d.troops, Math.round(v)));
+}
+
+// 쓰러진 부대의 장수: 45% 확률로 포로, 아니면 도주
+function downUnit(u, bySide, captured, fled) {
+  u.dead = true; u.troops = 0;
+  if (Math.random() < 0.45) captured.push({ genId: u.genId, by: bySide });
+  else fled.push(u.genId);
+}
+
+function autoBattle(s) {
+  const mk = (list, side) => list.map(u => ({ ...u, side, train: side === 'att' ? s.attTrain : s.defTrain, dead: false }));
+  const units = [...mk(s.att, 'att'), ...mk(s.def, 'def')];
+  const captured = [], fled = [];
+  const mult = u => u.side === 'def' ? 0.95 - s.wall / 400 : 1;
+  const left = side => units.filter(u => u.side === side && !u.dead);
+
+  for (let round = 0; round < 30 && left('att').length && left('def').length; round++) {
+    for (const u of units) {
+      if (u.dead) continue;
+      const foes = units.filter(e => !e.dead && e.side !== u.side);
+      if (!foes.length) break;
+      const e = pick(foes);
+      e.troops -= calcDmg(u, e, mult(e));
+      if (e.troops <= 0) { downUnit(e, u.side, captured, fled); continue; }
+      u.troops -= Math.round(calcDmg(e, u, mult(u)) * 0.4);
+      if (u.troops <= 0) downUnit(u, e.side, captured, fled);
+    }
+  }
+  const winner = left('def').length ? 'def' : 'att';
+  const out = side => left(side).map(u => ({ genId: u.genId, troops: u.troops }));
+  return { winner, att: out('att'), def: out('def'), captured, fled };
+}
+
+// ============================================================
+//  6. 직접 지휘하는 전투 (전술 맵)
+// ============================================================
+const BW = 13, BH = 9, TS = 48;
+const CASTLE = [11, 4];
+const ATT_POS = [[0, 4], [1, 3], [1, 5], [0, 2], [0, 6]];
+const DEF_POS = [[11, 4], [10, 3], [10, 5], [11, 2], [11, 6]];
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const MOVE = 4;
+let B = null;
+
+function makeField(seedText) {
+  let seed = [...seedText].reduce((s, ch) => (s * 31 + ch.charCodeAt(0)) % 2147483647, 7) || 1;
+  const r = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  const t = Array.from({ length: BH }, () => Array(BW).fill('plain'));
+  for (let y = 0; y < BH; y++) for (let x = 0; x < BW; x++) {
+    const v = r();
+    if (v < 0.14) t[y][x] = 'forest'; else if (v < 0.21) t[y][x] = 'mountain';
+  }
+  const base = 5 + Math.floor(r() * 2), ph = r() * 6, rx = [];
+  for (let y = 0; y < BH; y++) { rx[y] = base + Math.round(Math.sin(y * 0.9 + ph)); t[y][rx[y]] = 'river'; }
+  const b1 = 1 + Math.floor(r() * 3), b2 = 5 + Math.floor(r() * 3);
+  t[b1][rx[b1]] = 'bridge'; t[b2][rx[b2]] = 'bridge';
+  [...ATT_POS, ...DEF_POS].forEach(([x, y]) => { t[y][x] = 'plain'; });
+  t[CASTLE[1]][CASTLE[0]] = 'castle';
+  return t;
+}
+
+// 성까지의 거리 (컴퓨터가 길을 찾을 때 써요)
+function castleDistance(tiles) {
+  const d = Array.from({ length: BH }, () => Array(BW).fill(999));
+  d[CASTLE[1]][CASTLE[0]] = 0;
+  const q = [CASTLE];
+  while (q.length) {
+    q.sort((a, b) => d[a[1]][a[0]] - d[b[1]][b[0]]);
+    const [x, y] = q.shift();
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= BW || ny >= BH) continue;
+      const c = TERRAIN[tiles[ny][nx]].cost;
+      if (c >= 99) continue;
+      if (d[y][x] + c < d[ny][nx]) { d[ny][nx] = d[y][x] + c; q.push([nx, ny]); }
+    }
+  }
+  return d;
+}
+
+const bAlive = side => B.units.filter(u => !u.dead && u.side === side);
+const unitAt = (x, y) => B.units.find(u => !u.dead && u.x === x && u.y === y);
+const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+const enemyNear = (side, x, y) => B.units.filter(u => !u.dead && u.side !== side && Math.abs(u.x - x) + Math.abs(u.y - y) === 1);
+const tileMult = u => B.tiles[u.y][u.x] === 'castle' ? 0.9 - B.s.wall / 300 : TERRAIN[B.tiles[u.y][u.x]].def;
+const sideName = side => fname(side === 'att' ? B.s.f : B.s.D);
+
+function tacticalBattle(s) {
+  return new Promise(resolve => {
+    const tiles = makeField(s.to + state.year + state.month);
+    const units = [];
+    s.att.forEach((u, i) => units.push({ id: units.length, genId: u.genId, side: 'att', troops: u.troops, max: u.troops,
+      train: s.attTrain, x: ATT_POS[i][0], y: ATT_POS[i][1] }));
+    s.def.forEach((u, i) => units.push({ id: units.length, genId: u.genId, side: 'def', troops: u.troops, max: u.troops,
+      train: s.defTrain, x: DEF_POS[i][0], y: DEF_POS[i][1], hold: i === 0 }));
+    units.forEach(u => Object.assign(u, { dead: false, done: false, moved: false, confused: false }));
+    B = {
+      s, tiles, units, dist: castleDistance(tiles), day: 1, turn: 'att',
+      playerSide: s.f === state.player ? 'att' : 'def',
+      sel: null, mode: null, captured: [], fled: [], ended: false, busy: false, resolve, hits: new Set(),
+    };
+    $('b-log').innerHTML = '';
+    $('battle').hidden = false;
+    window.scrollTo(0, 0);
+    blog(`${josa(s.to, '을', '를')} 둘러싼 전투가 시작됐다! 공격군이 🏯 성에 들어가면 함락, 30일을 버티면 수비군 승리.`, 'turn');
+    startPhase('att');
+  });
+}
+
+function blog(text, cls = '') {
+  const p = document.createElement('p');
+  p.className = cls; p.textContent = text;
+  $('b-log').prepend(p);
+}
+
+async function startPhase(side) {
+  if (B.ended) return;
+  B.turn = side;
+  B.units.forEach(u => { if (u.side === side && !u.dead) { u.done = u.confused; u.moved = false; } });
+  B.sel = null; B.mode = null;
+  blog(`— ${B.day}일째 · ${sideName(side)}군 차례 —`, 'turn');
+  bRender();
+  if (side !== B.playerSide) {
+    await aiPhase(side);
+    if (!B.ended) endPhase();
+  }
+}
+
+function endPhase() {
+  if (B.ended) return;
+  const side = B.turn;
+  B.units.forEach(u => { if (u.side === side) u.confused = false; });
+  if (side === 'def') {
+    B.day++;
+    if (B.day > 30) return endBattle('def', '30일을 버티지 못하고 공격군이 물러났다.');
+  }
+  startPhase(side === 'att' ? 'def' : 'att');
+}
+
+function checkBattleEnd() {
+  if (B.ended) return true;
+  const att = bAlive('att'), def = bAlive('def');
+  const inCastle = att.find(u => u.x === CASTLE[0] && u.y === CASTLE[1]);
+  if (inCastle) { endBattle('att', `${gen(inCastle.genId).name} 부대가 성에 깃발을 꽂았다!`); return true; }
+  if (!def.length) { endBattle('att', '수비군이 모두 무너졌다.'); return true; }
+  if (!att.length) { endBattle('def', '공격군이 모두 무너졌다.'); return true; }
+  return false;
+}
+
+function endBattle(winner, reason) {
+  if (B.ended) return;
+  B.ended = true;
+  $('battle').hidden = true;
+  const out = side => bAlive(side).map(u => ({ genId: u.genId, troops: u.troops }));
+  B.resolve({ winner, reason, att: out('att'), def: out('def'), captured: B.captured, fled: B.fled });
+}
+
+// 이동할 수 있는 칸 (적 옆에 붙으면 거기서 멈춰요)
+function reachable(u) {
+  const best = new Map([[`${u.x},${u.y}`, 0]]);
+  const q = [[u.x, u.y, 0]];
+  while (q.length) {
+    q.sort((a, b) => a[2] - b[2]);
+    const [x, y, c] = q.shift();
+    if (c > 0 && enemyNear(u.side, x, y).length) continue;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy, k = `${nx},${ny}`;
+      if (nx < 0 || ny < 0 || nx >= BW || ny >= BH) continue;
+      const nc = c + TERRAIN[B.tiles[ny][nx]].cost;
+      if (nc > MOVE) continue;
+      const o = unitAt(nx, ny);
+      if (o && o.side !== u.side) continue;
+      if (best.has(k) && best.get(k) <= nc) continue;
+      best.set(k, nc); q.push([nx, ny, nc]);
+    }
+  }
+  for (const k of [...best.keys()]) {
+    const [x, y] = k.split(',').map(Number);
+    const o = unitAt(x, y);
+    if (o && o !== u) best.delete(k);
+  }
+  return best;
+}
+
+function hitFx(u) { B.hits.add(u.id); }
+
+function doAttack(a, e) {
+  const ga = gen(a.genId), ge = gen(e.genId);
+  const dmg = calcDmg(a, e, tileMult(e));
+  e.troops -= dmg; hitFx(e);
+  blog(`⚔️ ${ga.name}의 공격! ${ge.name} 부대 -${fmt(dmg)}`, a.side === B.playerSide ? 'me' : 'bad');
+  if (e.troops <= 0) return bDown(e, a.side);
+  const c = Math.round(calcDmg(e, a, tileMult(a)) * 0.4);
+  a.troops -= c; hitFx(a);
+  blog(`↩️ ${ge.name}의 반격 -${fmt(c)}`);
+  if (a.troops <= 0) bDown(a, e.side);
+}
+
+function bDown(u, bySide) {
+  const before = B.captured.length;
+  downUnit(u, bySide, B.captured, B.fled);
+  const g = gen(u.genId);
+  blog(B.captured.length > before ? `⛓️ ${josa(g.name, '이', '가')} 사로잡혔다!` : `💨 ${g.name} 부대가 무너져 ${josa(g.name, '은', '는')} 달아났다.`,
+    u.side === B.playerSide ? 'bad' : 'me');
+}
+
+const fireChance = (a, e) => clamp(0.45 + (gen(a.genId).int - gen(e.genId).int) / 100 + (B.tiles[e.y][e.x] === 'forest' ? 0.1 : 0), 0.05, 0.9);
+const confuseChance = (a, e) => clamp(0.35 + (gen(a.genId).int - gen(e.genId).int) / 100, 0.05, 0.85);
+
+function doStratagem(a, e, kind) {
+  const ga = gen(a.genId), ge = gen(e.genId);
+  const mine = a.side === B.playerSide ? 'me' : 'bad';
+  if (kind === 'fire') {
+    if (Math.random() < fireChance(a, e)) {
+      const dmg = Math.min(e.troops, Math.round(e.troops * rand(0.15, 0.25) + 100));
+      e.troops -= dmg; hitFx(e);
+      blog(`🔥 ${ga.name}의 화계 성공! ${ge.name} 부대 -${fmt(dmg)}`, mine);
+      if (e.troops <= 0) bDown(e, a.side);
+    } else blog(`🔥 ${ga.name}의 화계… ${josa(ge.name, '이', '가')} 간파했다.`);
+  } else {
+    if (Math.random() < confuseChance(a, e)) {
+      e.confused = true; hitFx(e);
+      blog(`🌀 ${ga.name}의 혼란 성공! ${ge.name} 부대는 다음 차례에 움직이지 못한다.`, mine);
+    } else blog(`🌀 ${ga.name}의 혼란… 실패했다.`);
+  }
+}
+
+async function doDuel(a, e) {
+  const ga = gen(a.genId), ge = gen(e.genId);
+  if (ge.war < ga.war - 10 && Math.random() < 0.6) {
+    blog(`🗡️ ${josa(ga.name, '이', '가')} 일기토를 청했지만 ${josa(ge.name, '은', '는')} 겁을 먹고 피했다! (사기 저하)`, a.side === B.playerSide ? 'me' : 'bad');
+    e.troops -= Math.round(e.troops * 0.05); hitFx(e);
+    return;
+  }
+  let ha = 100, he = 100;
+  const lines = [];
+  for (let r = 1; r <= 8 && ha > 0 && he > 0; r++) {
+    const d1 = Math.round(ga.war * ga.war / 350 * rand(0.5, 1.4));
+    const d2 = Math.round(ge.war * ge.war / 350 * rand(0.5, 1.4));
+    he -= d1; ha -= d2;
+    lines.push(`<p>${r}합 — ${ga.name} ${'▮'.repeat(Math.max(0, Math.ceil(ha / 10)))} ${Math.max(0, ha)} : ${Math.max(0, he)} ${'▮'.repeat(Math.max(0, Math.ceil(he / 10)))} ${ge.name}</p>`);
+  }
+  let result;
+  if (ha > 0 && he > 0) result = '승부가 나지 않았다!';
+  else {
+    const [win, lose, wu, lu] = he < ha ? [ga, ge, a, e] : [ge, ga, e, a];
+    lu.troops = Math.round(lu.troops * 0.6); hitFx(lu);
+    result = `${josa(win.name, '이', '가')} 승리했다! ${lose.name} 부대의 사기가 무너졌다.`;
+    if (Math.random() < 0.35) { result += ` ${josa(lose.name, '은', '는')} 말에서 떨어져 붙잡혔다!`; bDown(lu, wu.side); }
+  }
+  blog(`🗡️ 일기토: ${ga.name} vs ${ge.name} — ${result}`, 'turn');
+  await ask(`
+    <h2 class="serif">🗡️ 일기토!</h2>
+    <p><b>${ga.name}</b> (무력 ${ga.war}) vs <b>${ge.name}</b> (무력 ${ge.war})</p>
+    <div class="duel">${lines.join('')}</div>
+    <p><b>${result}</b></p>
+    <div class="btns"><button class="primary" data-v="ok">확인</button></div>`);
+}
+
+// ---------- 컴퓨터 부대 ----------
+async function aiPhase(side) {
+  B.busy = true; bRender();
+  const list = bAlive(side).sort((a, b) => B.dist[a.y][a.x] - B.dist[b.y][b.x]);
+  for (const u of list) {
+    if (B.ended) break;
+    if (u.dead || u.done) continue;
+    await aiAct(u);
+    u.done = true;
+    bRender();
+    await sleep(250);
+    if (checkBattleEnd()) break;
+  }
+  B.busy = false;
+}
+
+async function aiAct(u) {
+  const g = gen(u.genId);
+  const holder = bAlive('def').find(v => v.x === CASTLE[0] && v.y === CASTLE[1]);
+  let best = null;
+  for (const [k] of reachable(u)) {
+    const [x, y] = k.split(',').map(Number);
+    const isCastle = x === CASTLE[0] && y === CASTLE[1];
+    let score = 0, target = null;
+    for (const e of enemyNear(u.side, x, y)) {
+      const d = calcDmg(u, e, tileMult(e)) * 1 + (calcDmg(u, e, tileMult(e)) >= e.troops ? 3000 : 0);
+      if (d > score) { score = d; target = e; }
+    }
+    if (u.side === 'att') {
+      if (isCastle) score += 100000;
+      score -= B.dist[y][x] * 120;
+    } else {
+      if (u.hold && !isCastle) continue;
+      if (!holder && isCastle) score += 5000;
+      score -= Math.max(0, B.dist[y][x] - 3) * 400;
+    }
+    score += (1 - TERRAIN[B.tiles[y][x]].def) * 600;
+    if (!best || score > best.score) best = { x, y, score, target };
+  }
+  if (best) { u.x = best.x; u.y = best.y; }
+  if (u.side === 'def' && u.x === CASTLE[0] && u.y === CASTLE[1]) u.hold = true;
+  bRender();
+  await sleep(180);
+  if (checkBattleEnd()) return;
+
+  const near = B.units.filter(e => !e.dead && e.side !== u.side && dist(u, e) <= 2);
+  if (g.int >= 75 && near.length && Math.random() < 0.45) {
+    const e = near.sort((a, b) => gen(a.genId).int - gen(b.genId).int)[0];
+    return doStratagem(u, e, Math.random() < 0.6 ? 'fire' : 'confuse');
+  }
+  if (best && best.target && !best.target.dead) {
+    const e = best.target;
+    if (g.war >= 85 && gen(e.genId).war <= g.war - 5 && Math.random() < 0.25) return doDuel(u, e);
+    doAttack(u, e);
+  }
+}
+
+// ---------- 플레이어 조작 ----------
+function myTurn() { return B && !B.ended && !B.busy && B.turn === B.playerSide; }
+
+function selUnit() { return B.sel != null ? B.units[B.sel] : null; }
+
+function targetsFor(u, mode) {
+  if (!u) return [];
+  if (mode === 'duel') return enemyNear(u.side, u.x, u.y);
+  if (mode === 'fire' || mode === 'confuse') return B.units.filter(e => !e.dead && e.side !== u.side && dist(u, e) <= 2);
+  return enemyNear(u.side, u.x, u.y);
+}
+
+async function bClick(x, y) {
+  if (!myTurn()) return;
+  const u = unitAt(x, y), sel = selUnit();
+  const mineReady = sel && sel.side === B.playerSide && !sel.done && !sel.dead;
+
+  if (mineReady && B.mode) {
+    if (u && targetsFor(sel, B.mode).includes(u)) {
+      const mode = B.mode; B.mode = null;
+      if (mode === 'duel') await doDuel(sel, u); else doStratagem(sel, u, mode);
+      return finishUnit(sel);
+    }
+    B.mode = null; bRender(); return;
+  }
+  if (mineReady && u && u.side !== sel.side && dist(sel, u) === 1) { doAttack(sel, u); return finishUnit(sel); }
+  if (mineReady && !sel.moved && !u && reachable(sel).has(`${x},${y}`)) {
+    sel.x = x; sel.y = y; sel.moved = true;
+    bRender();
+    if (checkBattleEnd()) return;
+    if (!targetsFor(sel, 'attack').length && !B.units.some(e => !e.dead && e.side !== sel.side && dist(sel, e) <= 2)) finishUnit(sel);
+    return;
+  }
+  B.sel = u ? u.id : null; B.mode = null;
+  bRender();
+}
+
+function finishUnit(u) {
+  u.done = true; B.sel = null; B.mode = null;
+  bRender();
+  if (checkBattleEnd()) return;
+  const next = bAlive(B.playerSide).find(v => !v.done);
+  if (next) { B.sel = next.id; bRender(); }
+}
+
+function bAction(kind) {
+  const sel = selUnit();
+  if (!myTurn() || !sel || sel.done) return;
+  if (kind === 'wait') return finishUnit(sel);
+  B.mode = B.mode === kind ? null : kind;
+  bRender();
+}
+
+// ---------- 전투 화면 그리기 ----------
+function bRender() {
+  if (!B) return;
+  const sel = selUnit();
+  const mineReady = sel && sel.side === B.playerSide && !sel.done && myTurn();
+  const reach = mineReady && !sel.moved && !B.mode ? reachable(sel) : new Map();
+  const tgts = mineReady ? targetsFor(sel, B.mode || 'attack') : [];
+
+  let s = '';
+  for (let y = 0; y < BH; y++) for (let x = 0; x < BW; x++) {
+    const t = TERRAIN[B.tiles[y][x]];
+    s += `<g data-x="${x}" data-y="${y}"><rect class="tile" x="${x * TS}" y="${y * TS}" width="${TS}" height="${TS}" fill="${t.color}"/>`;
+    if (t.icon) s += `<text x="${x * TS + TS / 2}" y="${y * TS + 32}" font-size="${B.tiles[y][x] === 'castle' ? 26 : 18}" text-anchor="middle" opacity=".75">${t.icon}</text>`;
+    if (B.tiles[y][x] === 'bridge') s += `<rect x="${x * TS + 4}" y="${y * TS + 18}" width="${TS - 8}" height="12" fill="#7a5a34" opacity=".6"/>`;
+    if (reach.has(`${x},${y}`) && !(x === sel.x && y === sel.y)) s += `<rect class="reach" x="${x * TS + 2}" y="${y * TS + 2}" width="${TS - 4}" height="${TS - 4}" rx="6"/>`;
+    s += '</g>';
+  }
+  for (const e of tgts) s += `<rect class="tgt" x="${e.x * TS + 2}" y="${e.y * TS + 2}" width="${TS - 4}" height="${TS - 4}" rx="6"/>`;
+
+  for (const u of B.units) {
+    if (u.dead) continue;
+    const g = gen(u.genId), f = u.side === 'att' ? B.s.f : B.s.D;
+    const cx = u.x * TS + TS / 2, cy = u.y * TS + TS / 2 - 4;
+    const ratio = clamp(u.troops / u.max, 0, 1);
+    s += `<g class="unit ${u.done ? 'done' : ''} ${B.hits.has(u.id) ? 'hit' : ''}" data-x="${u.x}" data-y="${u.y}">
+      ${B.sel === u.id ? `<circle class="ring" cx="${cx}" cy="${cy}" r="20"/>` : ''}
+      <circle class="body" cx="${cx}" cy="${cy}" r="17" fill="${FACTIONS[f].color}" stroke="${u.side === B.playerSide ? '#fff' : '#2b2118'}" stroke-width="2.5"/>
+      <text class="unit-name" x="${cx}" y="${cy + 4}">${g.name}</text>
+      <rect x="${u.x * TS + 6}" y="${u.y * TS + TS - 9}" width="${TS - 12}" height="4" fill="#00000033"/>
+      <rect x="${u.x * TS + 6}" y="${u.y * TS + TS - 9}" width="${(TS - 12) * ratio}" height="4" fill="${ratio > .5 ? '#3e7d48' : ratio > .25 ? '#d4a017' : '#b03a2e'}"/>
+      ${u.confused ? `<text x="${cx + 14}" y="${cy - 10}" font-size="14">🌀</text>` : ''}
+    </g>`;
+  }
+  $('b-svg').innerHTML = s;
+  B.hits.clear();
+
+  $('b-title').innerHTML = `${tag(B.s.f)} 공격 vs ${tag(B.s.D)} 수비 — ${B.s.to} 공방전`;
+  $('b-day').textContent = `${Math.min(B.day, 30)}일째 / 30일 · ${B.turn === B.playerSide ? '아군 차례' : '적군 차례…'}`;
+
+  // 부대 정보
+  let info;
+  if (sel) {
+    const g = gen(sel.genId), t = TERRAIN[B.tiles[sel.y][sel.x]];
+    info = `<h2 class="serif">${g.name} ${tag(sel.side === 'att' ? B.s.f : B.s.D)}</h2>
+      <div class="stats">
+        <div><span>병력</span><b>${fmt(sel.troops)}</b></div><div><span>훈련</span><b>${sel.train}</b></div>
+        <div><span>통솔</span><b>${g.lead}</b></div><div><span>무력</span><b>${g.war}</b></div>
+        <div><span>지력</span><b>${g.int}</b></div><div><span>지형</span><b>${t.name}</b></div>
+      </div>`;
+    if (mineReady) {
+      const tip = B.mode === 'duel' ? '붉은 칸의 적장을 눌러 일기토를 신청!'
+        : B.mode === 'fire' ? '2칸 안의 적을 눌러 불을 질러요.'
+        : B.mode === 'confuse' ? '2칸 안의 적을 눌러 혼란시켜요.'
+        : sel.moved ? '붉은 칸의 적을 눌러 공격하거나, 아래 버튼을 골라요.'
+        : '파란 칸으로 이동하거나, 붉은 칸의 적을 바로 공격해요.';
+      info += `<div class="hint" style="margin-top:8px">${tip}</div>`;
+    }
+  } else {
+    info = `<h2 class="serif">작전 지시</h2><p class="muted">${myTurn()
+      ? '우리 부대(흰 테두리)를 눌러 선택하세요. 모두 움직였으면 턴 종료!'
+      : '적군이 움직이는 중…'}</p>
+      <p class="muted">🏯 성 · 🌲 숲(방어↑, 이동 2) · ⛰️ 산(방어↑↑, 이동 3) · 강은 다리로만 건너요.</p>`;
+  }
+  $('b-unit').innerHTML = info;
+
+  const near1 = mineReady ? enemyNear(sel.side, sel.x, sel.y) : [];
+  const near2 = mineReady ? targetsFor(sel, 'fire') : [];
+  const best2 = near2[0];
+  $('b-actions').innerHTML = mineReady ? `
+    <button onclick="bAction('duel')" ${near1.length ? '' : 'disabled'} class="${B.mode === 'duel' ? 'primary' : ''}">🗡️ 일기토<small>옆의 적장과 1:1</small></button>
+    <button onclick="bAction('fire')" ${near2.length ? '' : 'disabled'} class="${B.mode === 'fire' ? 'primary' : ''}">🔥 화계<small>${best2 ? `성공률 ~${Math.round(fireChance(sel, best2) * 100)}%` : '2칸 안의 적'}</small></button>
+    <button onclick="bAction('confuse')" ${near2.length ? '' : 'disabled'} class="${B.mode === 'confuse' ? 'primary' : ''}">🌀 혼란<small>${best2 ? `성공률 ~${Math.round(confuseChance(sel, best2) * 100)}%` : '한 턴 묶기'}</small></button>
+    <button onclick="bAction('wait')">⏸️ 대기<small>행동 끝내기</small></button>` : '';
+  $('b-end').disabled = !myTurn();
+  $('b-retreat').disabled = !myTurn();
+}
+
+// ============================================================
+//  7. 컴퓨터 세력의 한 달
+// ============================================================
+async function aiFaction(f) {
+  for (const c of citiesOf(f)) {
+    if (c.owner !== f) continue;
+    let gens = gensIn(c.name, f).filter(g => !g.acted);
+    if (!gens.length) continue;
+    const foes = adj(c.name).filter(n => n.owner !== f);
+
+    // 1) 이길 만하면 출진 (장수 한 명은 남겨요)
+    const all = gensIn(c.name, f);
+    if (foes.length && all.length >= 2 && c.troops >= 4000 && state.food[f] > c.troops / 8) {
+      const army = [...gens].sort(byPower).slice(0, Math.min(5, all.length - 1));
+      const troops = Math.min(Math.floor(c.troops * 0.8 / 100) * 100, army.reduce((s, g) => s + g.lead * 100, 0));
+      let best = null, bestR = 0;
+      for (const t of foes) {
+        const r = armyPower(army, troops, c.train) / defPower(t) * (t.owner === state.player ? 1.05 : 1);
+        if (r > bestR) { bestR = r; best = t; }
+      }
+      if (best && bestR > 1.15 && army.length) {
+        await launchAttack(f, c, best, army.map(g => g.id), troops, false);
+        if (state.over) return;
+        gens = gens.filter(g => !g.acted && g.city === c.name);
+      }
+    }
+
+    // 2) 후방 도시는 전선으로 병력과 장수를 보내요
+    if (!foes.length && c.troops > 3000) {
+      const fronts = adj(c.name).filter(n => n.owner === f && adj(n.name).some(m => m.owner !== f));
+      if (fronts.length) {
+        const to = fronts.sort((a, b) => a.troops - b.troops)[0];
+        const amt = Math.floor((c.troops - 1000) / 100) * 100;
+        c.troops -= amt; to.troops += amt;
+        const movers = gens.filter(g => !g.ruler).sort(byPower);
+        while (movers.length && gensIn(to.name, f).length < 5 && gensIn(c.name, f).length > 1) {
+          const g = movers.shift(); g.city = to.name; g.acted = true;
+        }
+        gens = gens.filter(g => !g.acted);
+      }
+    }
+
+    // 3) 남은 장수들은 내정·징병·훈련·탐색·등용
+    for (const g of gens) {
+      if (g.acted) continue;
+      const free = freeIn(c.name).find(x => x.found);
+      if (free && Math.random() < 0.7) { tryRecruit(g, free); continue; }
+      if (foes.length && c.troops < 30000 && canRun('draft', c, f) && state.gold[f] >= 150) { runCmd(g, 'draft', c); continue; }
+      if (foes.length && c.train < 75) { runCmd(g, 'train', c); continue; }
+      if (Math.random() < 0.15) { runCmd(g, 'search', c); continue; }
+      const opts = ['farm', 'comm', 'wall'].filter(t => canRun(t, c, f) && (t !== 'wall' || foes.length));
+      if (opts.length && state.gold[f] >= 100) { runCmd(g, pick(opts), c); continue; }
+      if (canRun('train', c, f)) runCmd(g, 'train', c);
+      g.acted = true;
+    }
+  }
+  // 충성이 낮은 장수에게 상을 줘요
+  for (const g of gensOf(f)) {
+    if (!g.ruler && g.loyalty < 65 && state.gold[f] >= 300) { state.gold[f] -= 100; g.loyalty += 10; }
+  }
+}
+
+// ============================================================
+//  8. 달이 바뀔 때
+// ============================================================
+async function endMonth() {
+  if (busy || state.over) return;
+  busy = true; render();
+  const P = state.player;
+  for (const f of Object.keys(FACTIONS)) {
+    if (f === P || !alive(f)) continue;
+    await aiFaction(f);
+    render();
+    if (checkGameEnd()) { busy = false; return; }
+  }
+
+  // 수입과 군량
+  for (const f of Object.keys(FACTIONS)) {
+    const cs = citiesOf(f);
+    if (!cs.length) continue;
+    state.gold[f] += Math.floor(cs.reduce((s, c) => s + c.comm, 0) / 4);
+    state.food[f] -= Math.ceil(cs.reduce((s, c) => s + c.troops, 0) / 40);
+    if (state.month === 7) {
+      const harvest = cs.reduce((s, c) => s + c.farm, 0) * 6;
+      state.food[f] += harvest;
+      if (f === P) log(`🌾 가을 수확! 군량 +${fmt(harvest)}`, 'me');
+    }
+    if (state.food[f] < 0) {
+      state.food[f] = 0;
+      cs.forEach(c => { c.troops = Math.floor(c.troops * 0.9); });
+      if (f === P) log('🍚 군량이 바닥나 병사들이 달아나고 있다!', 'bad');
+    }
+  }
+  state.cities.forEach(c => { c.pop = Math.round(c.pop * 1.003); });
+
+  // 충성이 낮으면 떠나요
+  for (const g of gensOf(P)) {
+    if (!g.ruler && g.loyalty < 45 && Math.random() < 0.05) {
+      g.f = null; g.found = true; g.loyalty = 0;
+      log(`💔 충성이 낮던 ${josa(g.name, '이', '가')} 떠나 재야로 돌아갔다. (포상으로 충성을 올려요)`, 'bad');
+    }
+  }
+
+  state.gens.forEach(g => { g.acted = false; });
+  state.month++;
+  if (state.month > 12) { state.month = 1; state.year++; }
+  log(`${dateText()} — 금 +${fmt(Math.floor(citiesOf(P).reduce((s, c) => s + c.comm, 0) / 4))}`, 'turn');
+  save(true);
+  busy = false;
+  render();
+  checkGameEnd();
+}
+
+function checkGameEnd() {
+  if (state.over) return true;
+  const P = state.player, n = citiesOf(P).length;
+  if (n === 0) {
+    state.over = true;
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    ask(`<h2 class="serif">💀 멸망…</h2><p>${dateText()}, ${FACTIONS[P].ruler}의 꿈은 여기서 끝났습니다.</p>
+      <div class="btns"><button class="primary" data-v="ok">다시 도전</button></div>`).then(showStart);
+    render();
+    return true;
+  }
+  if (n === state.cities.length) {
+    state.over = true;
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    ask(`<h2 class="serif">🎉 천하통일!</h2>
+      <p>${dateText()}, ${josa(FACTIONS[P].ruler, '이', '가')} 마침내 천하를 하나로 만들었습니다.</p>
+      <p>함께한 장수 ${gensOf(P).length}명: ${gensOf(P).sort(byPower).slice(0, 10).map(g => g.name).join(', ')}…</p>
+      <div class="btns"><button class="primary" data-v="ok">새 게임</button></div>`).then(showStart);
+    render();
+    return true;
+  }
+  return false;
+}
+
+// ============================================================
+//  9. 플레이어 명령 화면
+// ============================================================
+function ask(html, wire) {
+  return new Promise(res => {
+    $('overlay').innerHTML = `<div class="overlay"><div class="modal">${html}</div></div>`;
+    const m = $('overlay').querySelector('.modal');
+    const done = v => { closeModal(); res(v); };
+    m.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => done(b.dataset.v)));
+    if (wire) wire(m, done);
+  });
+}
+function closeModal() { $('overlay').innerHTML = ''; }
+const okBtn = '<div class="btns"><button class="primary" data-v="ok">확인</button></div>';
+
+function genTable(list, hlStat, clickable, extra = () => '') {
+  return `<table>
+    <tr><th>장수</th>${STATS.map(s => `<th class="${s === hlStat ? 'hl' : ''}">${STAT_NAME[s]}</th>`).join('')}<th>충성</th>${extra(null)}</tr>
+    ${list.map(g => `<tr class="${clickable ? 'pick-row' : ''} ${g.acted && !clickable ? 'done' : ''}" ${clickable ? `data-v="${g.id}"` : ''}>
+      <td>${g.ruler ? '👑' : ''}${g.name}${g.acted && !clickable ? ' ✓' : ''}</td>
+      ${STATS.map(s => `<td class="${s === hlStat ? 'hl' : ''}">${g[s]}</td>`).join('')}
+      <td>${g.ruler ? '-' : g.f ? g.loyalty : '재야'}</td>${extra(g)}</tr>`).join('')}
+  </table>`;
+}
+
+async function pickGeneral(list, stat, title, note = '') {
+  if (!list.length) { await ask(`<h2 class="serif">${title}</h2><p>명령할 수 있는 장수가 없어요.</p>${okBtn}`); return null; }
+  const v = await ask(`<h2 class="serif">${title}</h2>${note}
+    <p class="muted">누구에게 맡길까요? (${STAT_NAME[stat]}이 높을수록 효과가 좋아요)</p>
+    ${genTable([...list].sort((a, b) => b[stat] - a[stat]), stat, true)}
+    <div class="btns"><button data-v="">취소</button></div>`);
+  return v ? gen(+v) : null;
+}
+
+async function command(type) {
+  if (busy || state.over) return;
+  const c = city(state.selected), P = state.player;
+  const ready = gensIn(c.name, P).filter(g => !g.acted);
+  if (type === 'attack') return attackFlow(c, ready);
+  if (type === 'move') return moveFlow(c, ready);
+  if (type === 'hire') return hireFlow(c, ready);
+  if (type === 'reward') return rewardFlow(c);
+  if (!canRun(type, c, P)) {
+    return ask(`<h2 class="serif">${CMD[type].icon} ${CMD[type].label}</h2><p>지금은 할 수 없어요. (금이 부족하거나 이미 최대치)</p>${okBtn}`);
+  }
+  const C = CMD[type];
+  const g = await pickGeneral(ready, C.stat, `${C.icon} ${C.label}`, `<p class="muted">${C.desc}${C.cost ? ` · 비용 ${C.cost}금` : ''}</p>`);
+  if (!g) return;
+  log(runCmd(g, type, c), 'me');
+  render();
+}
+
+async function attackFlow(c, ready) {
+  const P = state.player;
+  const foes = adj(c.name).filter(n => n.owner !== P);
+  if (!foes.length || !ready.length || c.troops < 1000) {
+    return ask(`<h2 class="serif">⚔️ 출진</h2><p>${!foes.length ? '이웃한 적 도시가 없어요.' : !ready.length ? '움직일 수 있는 장수가 없어요.' : '병력이 1,000명 이상 있어야 해요.'}</p>${okBtn}`);
+  }
+  const tName = await ask(`
+    <h2 class="serif">⚔️ 출진 — 어디를 칠까요?</h2>
+    <div class="opt-list">${foes.map(t => `<button data-v="${t.name}">${tag(t.owner)} <b>${t.name}</b>
+      <span class="muted">병력 ${fmt(t.troops)} · 장수 ${gensIn(t.name, t.owner).length}명 · 성벽 ${t.wall}</span></button>`).join('')}</div>
+    <div class="btns"><button data-v="">취소</button></div>`);
+  if (!tName) return;
+  const t = city(tName);
+  const sorted = [...ready].sort(byPower);
+  const res = await ask(`
+    <h2 class="serif">⚔️ ${t.name} 공략 — 부대 편성</h2>
+    <p class="muted">최대 5명. 장수 한 명이 이끌 수 있는 병력은 통솔×100명이에요.<br>
+      적 ${tag(t.owner)} 병력 ${fmt(t.troops)} · ${gensIn(t.name, t.owner).sort(byPower).slice(0, 5).map(g => `${g.name}(무${g.war})`).join(', ') || '장수 없음'}</p>
+    <div class="gchecks">${sorted.map((g, i) => `<label><input type="checkbox" value="${g.id}" ${i < 3 ? 'checked' : ''}>
+      <b>${g.ruler ? '👑' : ''}${g.name}</b> <span class="muted">통${g.lead} 무${g.war} 지${g.int} · 최대 ${fmt(g.lead * 100)}명</span></label>`).join('')}</div>
+    <label class="slider">출진 병력 <b id="f-n"></b> / ${fmt(c.troops)}<input type="range" id="f-troops" step="100"></label>
+    <p class="muted" id="f-warn"></p>
+    <label><input type="checkbox" id="f-manual" checked> 직접 지휘하기 (끄면 자동 전투)</label>
+    <div class="btns"><button data-v="">취소</button><button class="primary" id="f-go">출진!</button></div>`,
+    (m, done) => {
+      const boxes = [...m.querySelectorAll('.gchecks input')], range = m.querySelector('#f-troops');
+      const update = () => {
+        const on = boxes.filter(b => b.checked);
+        boxes.forEach(b => { b.disabled = !b.checked && on.length >= 5; });
+        const cap = on.reduce((s, b) => s + gen(+b.value).lead * 100, 0);
+        const max = Math.min(cap, Math.floor(c.troops / 100) * 100);
+        range.min = Math.min(1000, max); range.max = max;
+        if (+range.value > max || +range.value < +range.min) range.value = Math.min(max, Math.floor(c.troops * 0.8 / 100) * 100);
+        m.querySelector('#f-n').textContent = fmt(+range.value);
+        const stay = gensIn(c.name, P).length - on.length;
+        m.querySelector('#f-warn').textContent = stay === 0 ? '⚠️ 도시에 장수가 하나도 안 남으면, 적이 오면 그냥 빼앗겨요!' : '';
+        m.querySelector('#f-go').disabled = !on.length || max < 1000;
+      };
+      boxes.forEach(b => b.addEventListener('change', update));
+      range.addEventListener('input', update);
+      range.value = Math.floor(c.troops * 0.8 / 100) * 100;
+      update();
+      m.querySelector('#f-go').addEventListener('click', () => done({
+        ids: boxes.filter(b => b.checked).map(b => +b.value), troops: +range.value, manual: m.querySelector('#f-manual').checked,
+      }));
+    });
+  if (!res) return;
+  busy = true; render();
+  await launchAttack(P, c, t, res.ids, res.troops, !res.manual);
+  busy = false;
+  if (city(t.name).owner === P) state.selected = t.name;
+  render();
+  checkGameEnd();
+}
+
+async function moveFlow(c, ready) {
+  const P = state.player;
+  const dests = adj(c.name).filter(n => n.owner === P);
+  if (!dests.length || !ready.length) {
+    return ask(`<h2 class="serif">🚚 이동</h2><p>${!dests.length ? '이웃한 우리 도시가 없어요.' : '움직일 수 있는 장수가 없어요.'}</p>${okBtn}`);
+  }
+  const dName = await ask(`
+    <h2 class="serif">🚚 이동 — 어디로 보낼까요?</h2>
+    <div class="opt-list">${dests.map(t => `<button data-v="${t.name}"><b>${t.name}</b>
+      <span class="muted">병력 ${fmt(t.troops)} · 장수 ${gensIn(t.name, P).length}명</span></button>`).join('')}</div>
+    <div class="btns"><button data-v="">취소</button></div>`);
+  if (!dName) return;
+  const res = await ask(`
+    <h2 class="serif">🚚 ${c.name} → ${dName}</h2>
+    <div class="gchecks">${ready.sort(byPower).map(g => `<label><input type="checkbox" value="${g.id}">
+      <b>${g.ruler ? '👑' : ''}${g.name}</b> <span class="muted">통${g.lead} 무${g.war} 지${g.int} 정${g.pol}</span></label>`).join('')}</div>
+    <label class="slider">함께 보낼 병력 <b id="m-n">0</b> / ${fmt(c.troops)}
+      <input type="range" id="m-troops" min="0" max="${Math.floor(c.troops / 100) * 100}" step="100" value="0"></label>
+    <div class="btns"><button data-v="">취소</button><button class="primary" id="m-go" disabled>이동</button></div>`,
+    (m, done) => {
+      const boxes = [...m.querySelectorAll('.gchecks input')], range = m.querySelector('#m-troops');
+      const update = () => {
+        m.querySelector('#m-n').textContent = fmt(+range.value);
+        m.querySelector('#m-go').disabled = !boxes.some(b => b.checked);
+      };
+      boxes.forEach(b => b.addEventListener('change', update));
+      range.addEventListener('input', update);
+      m.querySelector('#m-go').addEventListener('click', () => done({ ids: boxes.filter(b => b.checked).map(b => +b.value), troops: +range.value }));
+    });
+  if (!res) return;
+  res.ids.forEach(id => { const g = gen(id); g.city = dName; g.acted = true; });
+  c.troops -= res.troops; city(dName).troops += res.troops;
+  log(`🚚 ${res.ids.map(id => gen(id).name).join('·')} → ${dName} (병력 ${fmt(res.troops)})`, 'me');
+  render();
+}
+
+async function hireFlow(c, ready) {
+  const P = state.player;
+  const free = freeIn(c.name).filter(g => g.found);
+  const enemies = adj(c.name).filter(n => n.owner !== P).flatMap(n => gensIn(n.name, n.owner).filter(g => !g.ruler));
+  if (!ready.length) return ask(`<h2 class="serif">🤝 등용</h2><p>움직일 수 있는 장수가 없어요.</p>${okBtn}`);
+  if (!free.length && !enemies.length) {
+    return ask(`<h2 class="serif">🤝 등용</h2><p>등용할 사람이 없어요. 먼저 <b>🔍 탐색</b>으로 이 도시의 재야 인재를 찾아보세요.</p>${okBtn}`);
+  }
+  const best = [...ready].sort((a, b) => b.int + b.pol - a.int - a.pol)[0];
+  const list = [...free, ...enemies];
+  const v = await ask(`
+    <h2 class="serif">🤝 등용 — 누구를 데려올까요?</h2>
+    <p class="muted">재야 인재는 잘 따라오고, 다른 세력 장수는 충성이 낮을수록 잘 넘어와요. (이웃 도시 장수까지)</p>
+    ${genTable(list, null, true, g => g ? `<td>${g.f ? `${tag(g.f)}` : '재야'}</td><td>${Math.round(recruitChance(best, g) * 100)}%</td>` : '<th>소속</th><th>확률</th>')}
+    <div class="btns"><button data-v="">취소</button></div>`);
+  if (!v) return;
+  const target = gen(+v);
+  const exec = await pickGeneral(ready, 'int', `🤝 ${target.name} 설득`, `<p class="muted">지력과 정치가 높은 장수가 설득을 잘해요.</p>`);
+  if (!exec) return;
+  const r = tryRecruit(exec, target);
+  log(r.msg, r.ok ? 'me' : '');
+  render();
+  await ask(`<h2 class="serif">${r.ok ? '🤝 등용 성공!' : '🙅 실패'}</h2><p>${r.msg}</p>${okBtn}`);
+}
+
+async function rewardFlow(c) {
+  const P = state.player;
+  const list = gensIn(c.name, P).filter(g => !g.ruler);
+  if (state.gold[P] < 100) return ask(`<h2 class="serif">🎁 포상</h2><p>금이 100 이상 있어야 해요.</p>${okBtn}`);
+  if (!list.length) return ask(`<h2 class="serif">🎁 포상</h2><p>이 도시에 상을 줄 장수가 없어요.</p>${okBtn}`);
+  const v = await ask(`
+    <h2 class="serif">🎁 포상 (100금)</h2><p class="muted">충성이 낮은 장수는 떠나거나 적에게 넘어갈 수 있어요. 행동은 쓰지 않아요.</p>
+    ${genTable([...list].sort((a, b) => a.loyalty - b.loyalty), null, true)}
+    <div class="btns"><button data-v="">취소</button></div>`);
+  if (!v) return;
+  const g = gen(+v), up = 8 + rnd(6);
+  state.gold[P] -= 100;
+  g.loyalty = Math.min(100, g.loyalty + up);
+  log(`🎁 ${josa(g.name, '이', '가')} 상을 받고 감격했다. 충성 ${g.loyalty} (+${up})`, 'me');
+  render();
+}
+
+// ============================================================
+//  10. 화면 그리기
+// ============================================================
+function render() {
+  if (!state) return;
+  renderStatus(); renderMap(); renderCity(); renderPowers();
+  $('end-turn').disabled = busy || state.over;
+  $('end-turn').textContent = busy ? '다른 세력이 움직이는 중…' : '이번 달 마치기 ▶';
+}
+
+function renderStatus() {
+  const P = state.player, cs = citiesOf(P);
+  const ready = gensOf(P).filter(g => !g.acted).length;
+  $('status').innerHTML = `
+    <span>📅 <b>${dateText()}</b></span>
+    <span>${tag(P)}</span>
+    <span>💰 <b>${fmt(state.gold[P])}</b></span>
+    <span>🍚 <b>${fmt(state.food[P])}</b></span>
+    <span>🏯 ${cs.length}/${state.cities.length}</span>
+    <span>🪖 ${fmt(cs.reduce((s, c) => s + c.troops, 0))}</span>
+    <span>🧑‍✈️ 대기 <b>${ready}</b>/${gensOf(P).length}</span>`;
+}
+
+function renderMap() {
+  const P = state.player;
+  let s = `
+    <path class="river" d="M20,150 C120,130 220,165 300,160 S420,150 470,145 S600,125 700,135"/>
+    <text class="river-name serif" x="215" y="148">황하</text>
+    <path class="river" d="M30,355 C110,365 160,425 230,412 S320,398 380,402 S470,392 530,372 S620,345 700,350"/>
+    <text class="river-name serif" x="330" y="420">장강</text>
+    <text class="serif" x="665" y="40" font-size="13" fill="#8a7550" text-anchor="middle">北</text>
+    <path d="M665,46 L659,62 L665,58 L671,62 Z" fill="#8a7550"/>`;
+  for (const [a, b] of ROADS) {
+    const A = city(a), C = city(b);
+    s += `<line class="road" x1="${A.x}" y1="${A.y}" x2="${C.x}" y2="${C.y}"/>`;
+  }
+  for (const c of state.cities) {
+    const todo = c.owner === P ? gensIn(c.name, P).filter(g => !g.acted).length : 0;
+    s += `<g class="city" data-name="${c.name}" transform="translate(${c.x},${c.y})">
+      <circle r="26" fill="transparent"/>
+      <circle r="16" class="dot ${state.selected === c.name ? 'sel' : ''}" fill="${FACTIONS[c.owner].color}"/>
+      <text class="cname" y="4">${c.name}</text>
+      <text class="troops" y="31">${fmt(c.troops)}</text>
+      ${todo ? `<circle class="todo" cx="14" cy="-13" r="8"/><text class="todo-n" x="14" y="-9.5">${todo}</text>` : ''}
+    </g>`;
+  }
+  $('map').innerHTML = s;
+}
+
+function renderCity() {
+  const P = state.player, c = city(state.selected);
+  if (!c) { $('city-card').innerHTML = '<p class="muted">지도에서 도시를 눌러 보세요.</p>'; return; }
+  const mine = c.owner === P;
+  const gens = gensIn(c.name, c.owner).sort(byPower);
+  const free = freeIn(c.name).filter(g => g.found);
+  const ready = gens.filter(g => !g.acted).length;
+  let html = `
+    <h2 class="serif">${c.name} ${tag(c.owner)}</h2>
+    <div class="stats">
+      <div><span>병력</span><b>${fmt(c.troops)}</b></div><div><span>훈련</span><b>${c.train}</b></div>
+      <div><span>농업</span><b>${c.farm}</b></div><div><span>상업</span><b>${c.comm}</b></div>
+      <div><span>성벽</span><b>${c.wall}</b></div><div><span>인구</span><b>${(c.pop / 10000).toFixed(1)}만</b></div>
+    </div>
+    <h3>장수 ${gens.length}명${mine ? ` · 대기 ${ready}` : ''}</h3>
+    ${gens.length ? genTable(gens, null, false) : '<p class="muted">장수가 없어요. 공격받으면 그냥 빼앗겨요!</p>'}
+    ${free.length ? `<h3>재야 인재</h3><p>${free.map(g => `<b>${g.name}</b> <span class="muted">통${g.lead} 무${g.war} 지${g.int} 정${g.pol}</span>`).join('<br>')}</p>` : ''}`;
+  if (mine) {
+    const dis = busy || state.over ? 'disabled' : '';
+    html += `<div class="cmds">
+      ${Object.entries(CMD).map(([k, C]) => `<button onclick="command('${k}')" ${dis}>${C.icon} ${C.label}<small>${C.cost ? C.cost + '금' : '무료'}</small></button>`).join('')}
+      <button onclick="command('attack')" class="primary" ${dis}>⚔️ 출진<small>적 도시 공격</small></button>
+      <button onclick="command('move')" ${dis}>🚚 이동<small>장수·병력</small></button>
+      <button onclick="command('hire')" ${dis}>🤝 등용<small>인재 영입</small></button>
+      <button onclick="command('reward')" class="wide" ${dis}>🎁 포상 — 100금으로 충성 올리기</button>
+    </div>`;
+  }
+  $('city-card').innerHTML = html;
+}
+
+function renderPowers() {
+  const rows = Object.keys(FACTIONS)
+    .map(f => ({ f, cs: citiesOf(f), gs: gensOf(f) }))
+    .sort((a, b) => b.cs.length - a.cs.length);
+  $('powers').innerHTML = '<tr><th>세력</th><th>도시</th><th>장수</th><th>병력</th></tr>' + rows.map(({ f, cs, gs }) => `
+    <tr class="${cs.length ? '' : 'done'}"><td>${tag(f)}${f === state.player ? ' (나)' : ''}</td>
+    <td>${cs.length || '멸망'}</td><td>${cs.length ? gs.length : '-'}</td><td>${cs.length ? fmt(cs.reduce((s, c) => s + c.troops, 0)) : '-'}</td></tr>`).join('');
+}
+
+function log(text, cls = '') {
+  const p = document.createElement('p');
+  p.className = cls; p.textContent = text;
+  $('log').prepend(p);
+  while ($('log').children.length > 120) $('log').lastChild.remove();
+}
+
+// ============================================================
+//  11. 저장 / 시작 화면
+// ============================================================
+function save(silent) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    if (!silent) log('💾 저장했어요. 다음에 "이어하기"로 계속할 수 있어요.', 'me');
+  } catch (e) { if (!silent) log('저장할 수 없는 환경이에요.', 'bad'); }
+}
+function loadSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; }
+}
+
+function showStart() {
+  const saved = loadSave();
+  const counts = f => [CITY_DATA.filter(c => c[3] === f).length, GEN_DATA.filter(g => g[1] === f).length];
+  ask(`
+    <h2 class="serif">🏯 삼국지 군웅할거</h2>
+    <p class="muted">서기 200년, 한나라는 기울고 열두 영웅이 천하를 노린다. 당신은 누구의 깃발 아래 설 것인가?</p>
+    ${saved && !saved.over ? `<button class="primary" data-v="load" style="width:100%">📂 이어하기 — ${FACTIONS[saved.player].ruler} · ${saved.year}년 ${saved.month}월</button>` : ''}
+    <div class="factions">${Object.entries(FACTIONS).map(([f, F]) => {
+      const [nc, ng] = counts(f);
+      return `<button data-v="${f}"><div class="seal serif" style="background:${F.color}">${F.ruler[0]}</div>
+        <div><b>${F.ruler}</b> <span class="muted">${F.level}</span><br><span class="muted">도시 ${nc} · 장수 ${ng}</span></div></button>`;
+    }).join('')}</div>
+    <details>
+      <summary>게임 방법</summary>
+      <ul>
+        <li><b>장수가 곧 행동력</b>이에요. 도시를 누르고 명령을 고르면, 그 도시의 장수 한 명이 그 일을 해요. 장수마다 한 달에 한 번!</li>
+        <li><b>내정</b>: 개간(가을 수확)·상업(매달 금)·성벽. 정치가 높은 장수가 잘해요.</li>
+        <li><b>군사</b>: 징병·훈련 후 <b>출진</b>! 최대 5명이 부대를 이끌고, 통솔×100명까지 데려가요.</li>
+        <li><b>인사</b>: 🔍 탐색으로 재야 인재(제갈량, 사마의, 조운…)를 찾고 🤝 등용하세요. 이웃 적장도 빼올 수 있어요.</li>
+        <li><b>전투</b>: 직접 지휘하면 전술 맵에서 부대를 움직여요. 공격·일기토·화계·혼란! 성 🏯에 들어가면 함락.</li>
+        <li>사로잡은 적장은 등용·해방·처형 중에 골라요. 충성이 낮은 장수는 🎁 포상으로 붙잡아 두세요.</li>
+        <li>군량이 떨어지면 병사가 도망가요. 7월 수확을 챙기세요. 매달 자동 저장돼요.</li>
+      </ul>
+    </details>`).then(v => {
+    if (v === 'load') {
+      state = saved;
+      $('log').innerHTML = '';
+      log(`📂 ${dateText()} — 저장한 게임을 불러왔어요.`, 'turn');
+      render();
+    } else newGame(v);
+  });
+}
+
+// ---------- 시작 ----------
+$('map').addEventListener('click', e => {
+  const g = e.target.closest('.city');
+  if (g && state) { state.selected = g.dataset.name; render(); }
+});
+$('b-svg').addEventListener('click', e => {
+  const t = e.target.closest('[data-x]');
+  if (t) bClick(+t.dataset.x, +t.dataset.y);
+});
+$('end-turn').addEventListener('click', endMonth);
+$('b-end').addEventListener('click', () => { if (myTurn()) endPhase(); });
+$('b-retreat').addEventListener('click', () => {
+  if (!myTurn()) return;
+  if (B.playerSide === 'att') endBattle('def', '아군이 퇴각했다.');
+  else endBattle('att', '성을 버리고 퇴각했다.');
+});
+$('btn-save').addEventListener('click', () => state && !state.over && save(false));
+$('btn-new').addEventListener('click', () => { if (!busy) showStart(); });
+
+newGame('cao');   // 배경에 지도를 먼저 그려 두고
+showStart();      // 세력 선택 화면을 띄워요
+</script>
+</body>
+</html>

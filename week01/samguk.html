@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>삼국지 천하통일</title>
+<meta name="description" content="위·촉·오 중 한 나라를 골라 천하를 통일하는 턴제 전략 게임">
+<style>
+  :root {
+    --paper: #f3ead7;
+    --paper2: #e9dcc0;
+    --card: #fbf6ea;
+    --ink: #2b2118;
+    --soft: #6d5d4b;
+    --line: #cdb892;
+    --gold: #a8741a;
+    --red: #b03a2e;
+    --green: #3e7d48;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  .serif { font-family: "Nanum Myeongjo", "AppleMyungjo", "Batang", Georgia, serif; }
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--card);
+    color: var(--ink); border-radius: 10px; padding: 9px 12px;
+  }
+  button:hover:not(:disabled) { border-color: var(--gold); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 700; }
+  button.primary:hover:not(:disabled) { background: #4a3828; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap;
+    padding: 12px 16px; background: var(--paper2); border-bottom: 2px solid var(--line);
+  }
+  header h1 { margin: 0; font-size: 1.35rem; }
+  header a { color: var(--soft); font-size: .9rem; }
+  .status { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: .95rem; }
+  .status b { color: var(--gold); }
+
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px;
+    max-width: 1120px; margin: 0 auto; padding: 16px;
+  }
+  @media (max-width: 840px) { main { grid-template-columns: 1fr; } }
+
+  .map-wrap {
+    border: 2px solid var(--line); border-radius: 14px; overflow: hidden;
+    background: radial-gradient(ellipse at 40% 40%, #f4e8cc, #e3d0a8);
+  }
+  svg { display: block; width: 100%; height: auto; user-select: none; }
+  .river { fill: none; stroke: #8fb4c8; stroke-width: 7; stroke-linecap: round; opacity: .75; }
+  .river-name { font-size: 13px; fill: #5f8aa3; font-style: italic; }
+  .road { stroke: #a08a62; stroke-width: 2.2; stroke-dasharray: 5 5; }
+  .road.hot { stroke: var(--gold); stroke-width: 3.5; stroke-dasharray: none; }
+  .city { cursor: pointer; }
+  .city .dot { stroke: #fff8e8; stroke-width: 3; }
+  .city .dot.sel { stroke: #f2b632; stroke-width: 5; }
+  .city .cname { font-size: 12.5px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
+  .city .troops {
+    font-size: 11.5px; font-weight: 700; fill: var(--ink); text-anchor: middle; pointer-events: none;
+    paint-order: stroke; stroke: #f4e8cc; stroke-width: 3.5px;
+  }
+  .city .done { font-size: 13px; fill: var(--green); font-weight: 900; pointer-events: none;
+    paint-order: stroke; stroke: #f4e8cc; stroke-width: 3px; }
+  .target-ring { fill: none; stroke: var(--red); stroke-width: 3; stroke-dasharray: 6 4; animation: spin 3s linear infinite; }
+  .target-ring.move { stroke: var(--green); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .flash .dot { animation: flash .5s ease-in-out 4; }
+  @keyframes flash { 50% { opacity: .25; } }
+
+  .panel { display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .card h2 { margin: 0 0 8px; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: .78rem; color: #fff; padding: 2px 8px; border-radius: 99px; font-weight: 700; }
+  .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed #e2d4b6; font-size: .95rem; }
+  .row:last-of-type { border-bottom: 0; }
+  .muted { color: var(--soft); font-size: .9rem; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .actions button small { display: block; color: var(--soft); font-size: .75rem; }
+  .actions button.primary small { color: #d8c8a8; }
+  .hint { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: #f6e3c4; font-size: .9rem; }
+  .end-turn { width: 100%; padding: 12px; font-size: 1.05rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  td, th { padding: 4px 2px; text-align: right; }
+  td:first-child, th:first-child { text-align: left; }
+  th { color: var(--soft); font-weight: 500; }
+  .dead td { opacity: .4; text-decoration: line-through; }
+
+  .log { max-height: 220px; overflow-y: auto; font-size: .86rem; padding-right: 4px; }
+  .log p { margin: 0 0 6px; }
+  .log .me { color: var(--green); font-weight: 600; }
+  .log .bad { color: var(--red); font-weight: 600; }
+  .log .turn { color: var(--gold); font-weight: 700; margin-top: 8px; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(30, 22, 14, .55); display: flex;
+    align-items: center; justify-content: center; padding: 16px; z-index: 10;
+  }
+  .modal {
+    background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 22px;
+    max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  }
+  .modal h2 { margin: 0 0 10px; font-size: 1.5rem; }
+  .modal .btns { display: flex; justify-content: flex-end; margin-top: 16px; }
+  .pick { display: grid; gap: 10px; margin-top: 14px; }
+  .pick button { display: flex; gap: 14px; align-items: center; text-align: left; padding: 12px 14px; }
+  .pick .seal {
+    width: 48px; height: 48px; flex: none; border-radius: 10px; color: #fff; display: grid; place-items: center;
+    font-size: 1.6rem; font-weight: 900;
+  }
+  .pick b { font-size: 1.05rem; }
+  .pick .lv { font-size: .8rem; color: var(--soft); margin-left: 6px; }
+  details { margin-top: 14px; font-size: .9rem; }
+  details summary { cursor: pointer; color: var(--soft); }
+  details ul { padding-left: 18px; margin: 8px 0 0; }
+  .vs { display: flex; justify-content: space-around; align-items: center; margin: 12px 0; text-align: center; font-weight: 700; }
+  .vs .x { font-size: 1.6rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 class="serif">⚔️ 삼국지 천하통일</h1>
+    <a href="index.html">← 서재로 돌아가기</a>
+  </div>
+  <div class="status" id="status"></div>
+</header>
+
+<main>
+  <div class="map-wrap"><svg id="map" viewBox="0 0 640 530" aria-label="중국 지도"></svg></div>
+
+  <div class="panel">
+    <div class="card" id="city-card"></div>
+    <button class="primary end-turn" id="end-turn">턴 종료 ▶</button>
+    <div class="card">
+      <h2 class="serif">천하 형세</h2>
+      <table id="powers"></table>
+    </div>
+    <div class="card">
+      <h2 class="serif">전황 기록</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</main>
+
+<div id="overlay"></div>
+
+<script>
+// ============================================================
+//  게임 설정 — 숫자를 바꿔서 난이도를 조절해 보세요 ✏️
+// ============================================================
+const COST_RECRUIT = 80;      // 징병 비용(금)
+const RECRUIT_AMOUNT = 1000;  // 징병 1회에 늘어나는 병력
+const COST_DEV = 100;         // 개발 비용(금)
+const MAX_TROOPS = 20000;     // 도시 하나의 최대 병력
+const MAX_DEV = 10;           // 최대 상업 레벨
+const START_GOLD = 500;       // 시작 금
+
+const FACTIONS = {
+  wei: { name: '위', ruler: '조조', color: '#3c5aa6', level: '쉬움',  desc: '중원을 차지한 최강 세력. 도시가 많아 출발이 편해요.' },
+  wu:  { name: '오', ruler: '손권', color: '#c0392b', level: '보통',  desc: '강동의 탄탄한 기반. 장강을 끼고 차근차근 북진!' },
+  shu: { name: '촉', ruler: '유비', color: '#3e8a4c', level: '어려움', desc: '도시는 셋뿐이지만 관우·장비가 있어요. 실력으로 승부!' },
+  neu: { name: '중립', ruler: '', color: '#8b8378' },
+};
+
+// gen: [이름, 무력, 군주여부]
+const START_CITIES = [
+  { name: '북평', x: 500, y: 55,  owner: 'wei', troops: 4000, dev: 3, gen: ['하후연', 88] },
+  { name: '업',   x: 440, y: 125, owner: 'wei', troops: 5000, dev: 4, gen: ['허저', 96] },
+  { name: '낙양', x: 310, y: 200, owner: 'wei', troops: 5000, dev: 5, gen: ['하후돈', 90] },
+  { name: '허창', x: 420, y: 225, owner: 'wei', troops: 6000, dev: 5, gen: ['조조', 72, true] },
+  { name: '완',   x: 320, y: 280, owner: 'wei', troops: 4000, dev: 3, gen: ['조인', 84] },
+  { name: '서량', x: 75,  y: 115, owner: 'neu', troops: 4000, dev: 2, gen: ['마초', 97] },
+  { name: '장안', x: 185, y: 195, owner: 'neu', troops: 3500, dev: 4, gen: ['이각', 70] },
+  { name: '수춘', x: 490, y: 290, owner: 'neu', troops: 3500, dev: 4, gen: ['원술', 60] },
+  { name: '양양', x: 320, y: 350, owner: 'neu', troops: 3500, dev: 4, gen: ['유표', 55] },
+  { name: '강릉', x: 300, y: 420, owner: 'neu', troops: 3000, dev: 3, gen: ['채모', 70] },
+  { name: '한중', x: 140, y: 270, owner: 'shu', troops: 6000, dev: 3, gen: ['관우', 97] },
+  { name: '성도', x: 75,  y: 390, owner: 'shu', troops: 7000, dev: 5, gen: ['유비', 75, true] },
+  { name: '영안', x: 190, y: 375, owner: 'shu', troops: 6000, dev: 2, gen: ['장비', 98] },
+  { name: '장사', x: 290, y: 490, owner: 'wu',  troops: 5000, dev: 3, gen: ['감녕', 94] },
+  { name: '시상', x: 445, y: 410, owner: 'wu',  troops: 6000, dev: 3, gen: ['주유', 85] },
+  { name: '건업', x: 570, y: 345, owner: 'wu',  troops: 7000, dev: 5, gen: ['손권', 67, true] },
+];
+
+// 대기 중인 장수 (태수가 없는 도시가 생기면 자동으로 배치돼요)
+const START_RESERVE = {
+  wei: [['장료', 92], ['서황', 90]],
+  shu: [['조운', 96], ['황충', 93]],
+  wu:  [['황개', 83], ['여몽', 81]],
+  neu: [],
+};
+
+// 서로 이어진 도시 (길)
+const ROADS = [
+  ['북평', '업'], ['업', '낙양'], ['업', '허창'], ['서량', '장안'], ['장안', '낙양'], ['장안', '한중'],
+  ['낙양', '허창'], ['낙양', '완'], ['허창', '완'], ['허창', '수춘'], ['완', '양양'],
+  ['한중', '성도'], ['성도', '영안'], ['영안', '강릉'], ['양양', '강릉'], ['강릉', '장사'],
+  ['강릉', '시상'], ['장사', '시상'], ['수춘', '건업'], ['시상', '건업'],
+];
+
+// ============================================================
+//  게임 상태
+// ============================================================
+let state;
+
+function newGame(player) {
+  state = {
+    player,
+    turn: 0,
+    cities: START_CITIES.map(c => ({ ...c, gen: makeGen(c.gen) })),
+    reserve: Object.fromEntries(Object.entries(START_RESERVE).map(([f, list]) => [f, list.map(makeGen)])),
+    gold: { wei: START_GOLD, shu: START_GOLD, wu: START_GOLD, neu: 0 },
+    acted: new Set(),
+    selected: null,
+    mode: null,      // 'attack' | 'move' | null
+    flash: [],
+    over: false,
+  };
+  document.getElementById('log').innerHTML = '';
+  log(`${dateText()} — ${FACTIONS[player].ruler}의 천하통일이 시작된다!`, 'turn');
+  log('도시를 눌러 명령을 내리세요. 도시마다 한 달에 한 번 명령할 수 있어요.');
+  state.selected = state.cities.find(c => c.owner === player && c.gen && c.gen.ruler).name;
+  closeModal();
+  render();
+}
+
+function makeGen(g) { return g ? { name: g[0], war: g[1], ruler: !!g[2] } : null; }
+
+// ---------- 도우미 함수 ----------
+const city = name => state.cities.find(c => c.name === name);
+const neighbors = name => ROADS.filter(r => r.includes(name)).map(r => city(r[0] === name ? r[1] : r[0]));
+const citiesOf = f => state.cities.filter(c => c.owner === f);
+const income = f => citiesOf(f).reduce((s, c) => s + 30 + c.dev * 15, 0);
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = n => n.toLocaleString('ko-KR');
+const dateText = () => `서기 ${200 + Math.floor(state.turn / 12)}년 ${state.turn % 12 + 1}월`;
+const tag = f => `<span class="badge" style="background:${FACTIONS[f].color}">${FACTIONS[f].name}</span>`;
+
+// 받침 있으면 a, 없으면 b  (예: 관우가 / 조인이)
+function josa(word, a, b) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return word + (code >= 0 && code % 28 !== 0 ? a : b);
+}
+
+function attackPower(c, troops) { const w = c.gen ? c.gen.war : 30; return troops * (0.6 + w / 125); }
+function defensePower(c) { const w = c.gen ? c.gen.war : 30; return c.troops * (0.6 + w / 125) * 1.15 + 300; }
+
+function autoAssign(f) {
+  if (f === 'neu') return;
+  state.reserve[f].sort((a, b) => b.war - a.war);
+  citiesOf(f).forEach(c => { if (!c.gen && state.reserve[f].length) c.gen = state.reserve[f].shift(); });
+}
+
+// ============================================================
+//  전투
+// ============================================================
+function battle(fromName, toName) {
+  const A = city(fromName), D = city(toName);
+  const att = A.owner, defOwner = D.owner;
+  const sent = Math.floor(A.troops * 0.8 / 100) * 100;
+  A.troops -= sent;
+
+  const atk = attackPower(A, sent) * rand(0.85, 1.15);
+  const def = defensePower(D) * rand(0.85, 1.15);
+  const aLoss = Math.min(sent, Math.round(sent * clamp(def / atk * 0.45, 0.05, 1) / 10) * 10);
+
+  const r = {
+    att, defOwner, from: fromName, to: toName, sent, aLoss, win: atk > def, lines: [],
+    aName: A.gen ? A.gen.name : '무명 장수', aWar: A.gen ? A.gen.war : 30,
+    dName: D.gen ? D.gen.name : '수비대', dWar: D.gen ? D.gen.war : 30,
+  };
+
+  if (r.win) {
+    const oldGen = D.gen;
+    r.dLoss = D.troops;
+    D.owner = att;
+    D.troops = Math.max(300, sent - aLoss);
+    D.gen = null;
+    if (oldGen) r.lines.push(captured(oldGen, defOwner, att, D));
+    autoAssign(att);
+    if (defOwner !== 'neu' && citiesOf(defOwner).length === 0) {
+      r.lines.push(`💀 ${FACTIONS[defOwner].name}(${FACTIONS[defOwner].ruler}) 세력이 멸망했다!`);
+    }
+  } else {
+    r.dLoss = Math.round(D.troops * clamp(atk / def * 0.45, 0.05, 0.9) / 10) * 10;
+    D.troops -= r.dLoss;
+    A.troops += sent - aLoss;
+  }
+  state.flash.push(toName);
+  return r;
+}
+
+// 패배한 장수의 운명: 투항 / 도주 / 행방불명
+function captured(g, oldOwner, newOwner, D) {
+  const chance = g.ruler ? 0 : oldOwner === 'neu' ? 0.6 : 0.35;
+  if (Math.random() < chance) {
+    D.gen = g;
+    return `🤝 ${josa(g.name, '이', '가')} ${FACTIONS[newOwner].name}에 투항하여 ${D.name} 태수가 되었다!`;
+  }
+  if (oldOwner !== 'neu' && citiesOf(oldOwner).length > 0) {
+    state.reserve[oldOwner].push(g);
+    autoAssign(oldOwner);
+    return `🏃 ${josa(g.name, '은', '는')} 포위를 뚫고 도주했다.`;
+  }
+  return `🌫️ ${josa(g.name, '은', '는')} 행방을 감추었다.`;
+}
+
+function battleText(r) {
+  const head = `⚔️ [${FACTIONS[r.att].name}] ${r.aName}(${r.from}) → [${FACTIONS[r.defOwner].name}] ${r.dName}(${r.to})`;
+  return head + (r.win ? ` — 승리! ${r.to} 점령` : ' — 공격 실패') + (r.lines.length ? ' ' + r.lines.join(' ') : '');
+}
+
+// ============================================================
+//  플레이어 명령
+// ============================================================
+function recruit(c) {
+  state.gold[c.owner] -= COST_RECRUIT;
+  c.troops = Math.min(MAX_TROOPS, c.troops + RECRUIT_AMOUNT);
+}
+function develop(c) {
+  state.gold[c.owner] -= COST_DEV;
+  c.dev++;
+}
+
+function doCommand(cmd) {
+  const c = city(state.selected);
+  if (cmd === 'recruit') { recruit(c); log(`${c.name}: 병사 ${fmt(RECRUIT_AMOUNT)}명을 모집했다.`, 'me'); }
+  if (cmd === 'develop') { develop(c); log(`${c.name}: 시장을 넓혀 상업이 ${c.dev}레벨이 되었다.`, 'me'); }
+  if (cmd === 'attack' || cmd === 'move') { state.mode = cmd; render(); return; }
+  state.acted.add(c.name);
+  render();
+}
+
+function onCityClick(name) {
+  if (state.over) return;
+  if (state.mode) {
+    if (validTargets().includes(name)) return executeTarget(name);
+    state.mode = null;
+  }
+  state.selected = name;
+  render();
+}
+
+function validTargets() {
+  if (!state.mode || !state.selected) return [];
+  return neighbors(state.selected)
+    .filter(n => state.mode === 'attack' ? n.owner !== state.player : n.owner === state.player)
+    .map(n => n.name);
+}
+
+function executeTarget(name) {
+  const from = city(state.selected), to = city(name);
+  state.acted.add(from.name);
+  if (state.mode === 'move') {
+    const amt = Math.min(Math.floor(from.troops / 2 / 100) * 100, MAX_TROOPS - to.troops);
+    from.troops -= amt; to.troops += amt;
+    log(`${from.name} → ${to.name}: 병력 ${fmt(amt)}명을 수송했다.`, 'me');
+    state.mode = null;
+    render();
+    return;
+  }
+  state.mode = null;
+  const r = battle(from.name, name);
+  log(battleText(r), r.win ? 'me' : 'bad');
+  if (r.win) state.selected = name;
+  render();
+  showBattle(r);
+}
+
+// ============================================================
+//  턴 진행 (컴퓨터 차례)
+// ============================================================
+function endTurn() {
+  if (state.over) return;
+  state.mode = null;
+  const report = [];
+
+  for (const f of ['wei', 'shu', 'wu']) {
+    if (f === state.player || citiesOf(f).length === 0) continue;
+    aiTurn(f, report);
+  }
+  // 중립 도시는 조금씩 병력을 회복해요
+  citiesOf('neu').forEach(c => { c.troops = Math.min(6000, c.troops + 150); });
+
+  state.turn++;
+  for (const f of ['wei', 'shu', 'wu']) state.gold[f] += income(f);
+  state.acted.clear();
+  ['wei', 'shu', 'wu'].forEach(autoAssign);
+
+  log(`${dateText()} — 수입 +${fmt(income(state.player))}금`, 'turn');
+  render();
+  if (checkEnd()) return;
+  if (report.length) showReport(report);
+}
+
+function aiTurn(f, report) {
+  for (const c of citiesOf(f)) {
+    if (c.owner !== f) continue;
+    const foes = neighbors(c.name).filter(n => n.owner !== f);
+
+    // 1) 이길 만한 이웃이 있으면 공격
+    let best = null, bestScore = 0;
+    for (const t of foes) {
+      const score = attackPower(c, c.troops * 0.8) / defensePower(t) * (t.owner === state.player ? 1.1 : 1);
+      if (score > bestScore) { bestScore = score; best = t; }
+    }
+    if (best && bestScore > 1.35 && c.troops >= 1500) {
+      const r = battle(c.name, best.name);
+      const mine = r.defOwner === state.player;
+      log(battleText(r), mine ? (r.win ? 'bad' : 'me') : '');
+      if (mine) report.push(r);
+      continue;
+    }
+
+    // 2) 후방 도시는 전선으로 병력을 보내요
+    if (foes.length === 0 && c.troops > 1500) {
+      const front = neighbors(c.name).filter(n => n.owner === f && neighbors(n.name).some(m => m.owner !== f));
+      if (front.length) {
+        const tgt = front.sort((a, b) => a.troops - b.troops)[0];
+        const amt = Math.min(Math.floor((c.troops - 500) / 100) * 100, MAX_TROOPS - tgt.troops);
+        c.troops -= amt; tgt.troops += amt;
+        continue;
+      }
+    }
+
+    // 3) 징병 또는 개발
+    const g = state.gold[f];
+    const wantTroops = foes.length > 0 || c.dev >= MAX_DEV || Math.random() < 0.4;
+    if (g >= COST_RECRUIT && c.troops < MAX_TROOPS && wantTroops) recruit(c);
+    else if (g >= COST_DEV && c.dev < MAX_DEV) develop(c);
+  }
+}
+
+function checkEnd() {
+  const mine = citiesOf(state.player).length;
+  if (mine === 0) {
+    state.over = true;
+    showModal(`
+      <h2 class="serif">💀 멸망…</h2>
+      <p>${dateText()}, ${FACTIONS[state.player].ruler}의 꿈은 여기서 끝났습니다.</p>
+      <div class="btns"><button class="primary" onclick="showStart()">다시 도전</button></div>`);
+    return true;
+  }
+  if (mine === state.cities.length) {
+    state.over = true;
+    const months = state.turn + 1;
+    let best = null;
+    try {
+      const key = 'samguk-best-' + state.player;
+      best = Number(localStorage.getItem(key)) || null;
+      if (!best || months < best) localStorage.setItem(key, months);
+    } catch (e) {}
+    const record = !best || months < best ? '🏅 새 최단 기록!' : `최단 기록: ${best}개월`;
+    showModal(`
+      <h2 class="serif">🎉 천하통일!</h2>
+      <p>${dateText()}, ${josa(FACTIONS[state.player].ruler, '이', '가')} 마침내 천하를 하나로 만들었습니다.</p>
+      <p><b>${months}개월</b> 만의 통일 · ${record}</p>
+      <div class="btns"><button class="primary" onclick="showStart()">새 게임</button></div>`);
+    return true;
+  }
+  return false;
+}
+
+// ============================================================
+//  화면 그리기
+// ============================================================
+function render() {
+  renderStatus();
+  renderMap();
+  renderCityCard();
+  renderPowers();
+  document.getElementById('end-turn').disabled = state.over;
+}
+
+function renderStatus() {
+  const p = state.player, mine = citiesOf(p);
+  const left = mine.filter(c => !state.acted.has(c.name)).length;
+  document.getElementById('status').innerHTML = `
+    <span>📅 <b>${dateText()}</b></span>
+    <span>👑 ${tag(p)} ${FACTIONS[p].ruler}</span>
+    <span>💰 <b>${fmt(state.gold[p])}</b>금 (+${fmt(income(p))})</span>
+    <span>🏯 ${mine.length}/${state.cities.length}</span>
+    <span>📜 남은 명령 <b>${left}</b></span>`;
+}
+
+function renderMap() {
+  const targets = validTargets();
+  let s = `
+    <path class="river" d="M20,150 C120,120 200,170 260,162 S380,150 420,172 S520,190 640,175"/>
+    <text class="river-name serif" x="210" y="150">황하</text>
+    <path class="river" d="M30,330 C110,340 150,410 230,398 S300,385 360,382 S480,385 520,362 S600,330 640,322"/>
+    <text class="river-name serif" x="370" y="400">장강</text>
+    <text class="serif" x="600" y="40" font-size="13" fill="#8a7550" text-anchor="middle">北</text>
+    <path d="M600,46 L594,62 L600,58 L606,62 Z" fill="#8a7550"/>`;
+
+  for (const [a, b] of ROADS) {
+    const A = city(a), B = city(b);
+    const hot = state.mode && ((a === state.selected && targets.includes(b)) || (b === state.selected && targets.includes(a)));
+    s += `<line class="road ${hot ? 'hot' : ''}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}"/>`;
+  }
+
+  for (const c of state.cities) {
+    const isTarget = targets.includes(c.name);
+    const flash = state.flash.includes(c.name) ? 'flash' : '';
+    const done = c.owner === state.player && state.acted.has(c.name);
+    s += `
+      <g class="city ${flash}" data-name="${c.name}" transform="translate(${c.x},${c.y})">
+        <circle r="30" fill="transparent"/>
+        ${isTarget ? `<circle r="25" class="target-ring ${state.mode === 'move' ? 'move' : ''}"/>` : ''}
+        <circle r="18" class="dot ${state.selected === c.name ? 'sel' : ''}" fill="${FACTIONS[c.owner].color}"/>
+        <text class="cname" y="4.5">${c.name}</text>
+        <text class="troops" y="34">${fmt(c.troops)}</text>
+        ${done ? '<text class="done" x="13" y="-12">✓</text>' : ''}
+      </g>`;
+  }
+  document.getElementById('map').innerHTML = s;
+  state.flash = [];
+}
+
+function renderCityCard() {
+  const el = document.getElementById('city-card');
+  const c = state.selected && city(state.selected);
+  if (!c) { el.innerHTML = '<p class="muted">지도에서 도시를 눌러 보세요.</p>'; return; }
+
+  const mine = c.owner === state.player;
+  const g = state.gold[state.player];
+  let html = `
+    <h2 class="serif">${c.name} ${tag(c.owner)}</h2>
+    <div class="row"><span>태수</span><b>${c.gen ? `${c.gen.name} ${c.gen.ruler ? '👑' : ''} (무력 ${c.gen.war})` : '없음'}</b></div>
+    <div class="row"><span>병력</span><b>${fmt(c.troops)}명</b></div>
+    <div class="row"><span>상업</span><b>${'■'.repeat(c.dev)}${'□'.repeat(MAX_DEV - c.dev)} Lv.${c.dev}</b></div>
+    <div class="row"><span>월 수입</span><b>+${30 + c.dev * 15}금</b></div>`;
+
+  if (mine && state.mode) {
+    const verb = state.mode === 'attack' ? `빨간 원이 표시된 도시를 눌러 공격! (병력의 80%인 ${fmt(Math.floor(c.troops * 0.8 / 100) * 100)}명 출진)` : '초록 원이 표시된 우리 도시를 눌러 병력 절반을 보내요.';
+    html += `<div class="hint">${verb}</div>
+      <div class="actions"><button onclick="state.mode=null;render()" style="grid-column:span 2">취소</button></div>`;
+  } else if (mine && state.acted.has(c.name)) {
+    html += `<div class="hint">✓ 이번 달 명령을 마쳤어요.</div>`;
+  } else if (mine) {
+    const foes = neighbors(c.name).filter(n => n.owner !== state.player);
+    const friends = neighbors(c.name).filter(n => n.owner === state.player);
+    html += `
+      <div class="actions">
+        <button onclick="doCommand('recruit')" ${g < COST_RECRUIT || c.troops >= MAX_TROOPS ? 'disabled' : ''}>🪖 징병<small>${COST_RECRUIT}금 · +${fmt(RECRUIT_AMOUNT)}명</small></button>
+        <button onclick="doCommand('develop')" ${g < COST_DEV || c.dev >= MAX_DEV ? 'disabled' : ''}>🏪 개발<small>${COST_DEV}금 · 수입 +15</small></button>
+        <button class="primary" onclick="doCommand('attack')" ${!foes.length || c.troops < 1000 ? 'disabled' : ''}>⚔️ 공격<small>병력 1,000 이상</small></button>
+        <button onclick="doCommand('move')" ${!friends.length || c.troops < 400 ? 'disabled' : ''}>🚚 수송<small>절반을 이웃으로</small></button>
+      </div>`;
+  } else {
+    const from = neighbors(c.name).filter(n => n.owner === state.player);
+    html += `<p class="muted" style="margin:10px 0 0">${from.length
+      ? `🗡️ ${from.map(n => n.name).join(', ')}에서 공격할 수 있어요.`
+      : '우리 도시와 이어져 있지 않아요.'}</p>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderPowers() {
+  let html = '<tr><th>세력</th><th>도시</th><th>병력</th><th>금</th></tr>';
+  for (const f of ['wei', 'shu', 'wu', 'neu']) {
+    const cs = citiesOf(f);
+    const dead = f !== 'neu' && cs.length === 0;
+    html += `<tr class="${dead ? 'dead' : ''}">
+      <td>${tag(f)} ${FACTIONS[f].ruler || '군웅'}${f === state.player ? ' (나)' : ''}</td>
+      <td>${cs.length}</td>
+      <td>${fmt(cs.reduce((s, c) => s + c.troops, 0))}</td>
+      <td>${f === 'neu' ? '-' : fmt(state.gold[f])}</td></tr>`;
+  }
+  document.getElementById('powers').innerHTML = html;
+}
+
+function log(text, cls = '') {
+  const box = document.getElementById('log');
+  const p = document.createElement('p');
+  p.className = cls;
+  p.textContent = text;
+  box.prepend(p);
+  while (box.children.length > 80) box.lastChild.remove();
+}
+
+// ---------- 팝업 ----------
+function showModal(html) {
+  document.getElementById('overlay').innerHTML = `<div class="overlay"><div class="modal">${html}</div></div>`;
+}
+function closeModal() { document.getElementById('overlay').innerHTML = ''; }
+
+function battleBody(r) {
+  return `
+    <div class="vs">
+      <div>${tag(r.att)}<br>${r.aName}<br><span class="muted">무력 ${r.aWar} · ${fmt(r.sent)}명</span></div>
+      <div class="x">⚔️</div>
+      <div>${tag(r.defOwner)}<br>${r.dName}<br><span class="muted">무력 ${r.dWar} · ${r.to}</span></div>
+    </div>
+    <div class="row"><span>공격군 피해</span><b>${fmt(r.aLoss)}명</b></div>
+    <div class="row"><span>수비군 피해</span><b>${fmt(r.dLoss)}명</b></div>
+    ${r.lines.map(l => `<p>${l}</p>`).join('')}`;
+}
+
+function showBattle(r) {
+  showModal(`
+    <h2 class="serif">${r.win ? `🚩 ${r.to} 점령!` : '🛡️ 공격 실패…'}</h2>
+    ${battleBody(r)}
+    <div class="btns"><button class="primary" onclick="closeModal();checkEnd()">확인</button></div>`);
+}
+
+function showReport(list) {
+  showModal(`
+    <h2 class="serif">📯 적의 침공!</h2>
+    ${list.map(r => `<h3 class="serif" style="margin:16px 0 4px">${r.to} — ${r.win ? '<span style="color:var(--red)">함락</span>' : '<span style="color:var(--green)">방어 성공</span>'}</h3>${battleBody(r)}`).join('')}
+    <div class="btns"><button class="primary" onclick="closeModal()">확인</button></div>`);
+}
+
+function showStart() {
+  const pick = f => `
+    <button onclick="newGame('${f}')">
+      <div class="seal serif" style="background:${FACTIONS[f].color}">${FACTIONS[f].name}</div>
+      <div><b>${FACTIONS[f].ruler}</b><span class="lv">${FACTIONS[f].level}</span><br>
+      <span class="muted">${FACTIONS[f].desc}</span></div>
+    </button>`;
+  showModal(`
+    <h2 class="serif">⚔️ 삼국지 천하통일</h2>
+    <p class="muted">서기 200년, 한나라는 무너지고 영웅들이 일어섰다. 당신은 누구의 깃발을 들 것인가?</p>
+    <div class="pick">${pick('wei')}${pick('wu')}${pick('shu')}</div>
+    <details>
+      <summary>게임 방법</summary>
+      <ul>
+        <li>도시를 누르고 <b>징병·개발·공격·수송</b> 중 하나를 고르세요. 도시마다 한 달에 한 번!</li>
+        <li><b>공격</b>은 병력의 80%가 출진해요. 병력 × 태수의 무력이 클수록 강하고, 수비 쪽이 조금 유리해요.</li>
+        <li>이긴 도시의 장수는 <b>투항</b>해서 내 편이 될 수도 있어요.</li>
+        <li>매달 상업 레벨에 따라 금이 들어와요. <b>턴 종료</b>를 누르면 다른 세력이 움직입니다.</li>
+        <li>16개 도시를 모두 차지하면 <b>천하통일</b>!</li>
+      </ul>
+    </details>`);
+}
+
+// ---------- 시작 ----------
+document.getElementById('map').addEventListener('click', e => {
+  const g = e.target.closest('.city');
+  if (g && state) onCityClick(g.dataset.name);
+});
+document.getElementById('end-turn').addEventListener('click', endTurn);
+
+newGame('wei');   // 배경에 지도를 먼저 그려두고
+showStart();      // 세력 선택 화면을 띄워요
+</script>
+</body>
+</html>

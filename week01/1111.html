@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* CSS: 모양 */
+    h1 {
+      /* 무지개색 글자 */
+      background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-block;
+    }
+    button { padding: 12px 20px; }
+  </style>
+</head>
+<body>
+  <!-- HTML: 내용 -->
+  <h1>바이브 코딩 수업 너무 재밌고 신나고요</h1>
+  <br>
+  <button id="hello">오늘 수업종료시간 보기</button>
+
+  <script>
+    // JavaScript: 동작
+    document.getElementById('hello').onclick = function () {
+      alert('뭘봐! 수업이나 열심히 들어');
+    };
+  </script>
+</body>
+</html>
